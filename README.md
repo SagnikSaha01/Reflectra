@@ -1,3 +1,6 @@
+<img width="2560" height="1020" alt="image" src="https://github.com/user-attachments/assets/ce79a857-6723-4c90-9ce8-a97f8eceb2e7" />
+
+
 # MindTime - Digital Wellness Tracker
 
 **Transform your browsing data into self-awareness**
