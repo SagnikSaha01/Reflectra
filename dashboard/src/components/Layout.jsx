@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { Brain, LayoutDashboard, MessageCircle, History } from 'lucide-react'
 import './Layout.css'
+import logo from '../../../chrome-extension/icons/icon128.png'
 
 function Layout({ children }) {
   const location = useLocation()
@@ -16,7 +17,7 @@ function Layout({ children }) {
       <nav className="navbar">
         <div className="nav-content">
           <div className="nav-brand">
-            <Brain size={28} />
+            <img src={logo} className='logo-style'/>
             <span>Reflectra</span>
           </div>
 
