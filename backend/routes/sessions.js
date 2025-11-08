@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../db/database');
 const categorizationService = require('../services/categorization');
+const vectorStore = require('../services/vectorStore');
 
 // Get all sessions with optional filters
 router.get('/', async (req, res) => {
@@ -69,6 +70,18 @@ router.post('/', async (req, res) => {
 
     if (error) {
       return res.status(500).json({ error: error.message });
+    }
+
+    try {
+      await vectorStore.upsertSessionEmbedding({
+        id: data.id,
+        url,
+        title,
+        duration,
+        timestamp
+      });
+    } catch (vectorError) {
+      console.error('Vector store sync failed:', vectorError.message);
     }
 
     res.status(201).json(data);

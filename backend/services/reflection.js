@@ -1,9 +1,6 @@
-const OpenAI = require('openai');
 const supabase = require('../db/database');
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+const openai = require('./openaiClient');
+const vectorStore = require('./vectorStore');
 
 const REFLECTION_SYSTEM_PROMPT = `You are a thoughtful digital wellness coach helping users reflect on their browsing behavior.
 
@@ -17,11 +14,14 @@ Your role is to:
 Keep responses conversational, insightful, and focused on well-being rather than productivity metrics.`;
 
 async function generateReflection(query, timeRange = 'today') {
-  // Get relevant browsing data based on time range
+  const timeRangeStart = getStartTimeForRange(timeRange);
   const sessionData = await getSessionDataForTimeRange(timeRange);
+  const relevantSessions = await vectorStore.querySimilarSessions(query, {
+    topK: 8,
+    startTime: timeRangeStart
+  });
 
-  // Build context for the LLM
-  const context = buildContextFromSessions(sessionData);
+  const context = buildContextFromSessions(sessionData, relevantSessions);
 
   try {
     const response = await openai.chat.completions.create({
@@ -39,7 +39,10 @@ async function generateReflection(query, timeRange = 'today') {
 
     return {
       answer: response.choices[0].message.content,
-      context: sessionData,
+      context: {
+        timeframeSessions: sessionData,
+        relevantSessions
+      },
       timestamp: Date.now()
     };
   } catch (error) {
@@ -48,25 +51,25 @@ async function generateReflection(query, timeRange = 'today') {
   }
 }
 
-async function getSessionDataForTimeRange(timeRange) {
-  let startTime;
+function getStartTimeForRange(timeRange) {
   const now = Date.now();
 
   switch (timeRange) {
     case 'today':
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
-      startTime = todayStart.getTime();
-      break;
+      return todayStart.getTime();
     case 'week':
-      startTime = now - (7 * 24 * 60 * 60 * 1000);
-      break;
+      return now - (7 * 24 * 60 * 60 * 1000);
     case 'month':
-      startTime = now - (30 * 24 * 60 * 60 * 1000);
-      break;
+      return now - (30 * 24 * 60 * 60 * 1000);
     default:
-      startTime = now - (24 * 60 * 60 * 1000); // Last 24 hours
+      return now - (24 * 60 * 60 * 1000);
   }
+}
+
+async function getSessionDataForTimeRange(timeRange) {
+  const startTime = getStartTimeForRange(timeRange);
 
   const { data: sessions, error } = await supabase
     .from('sessions')
@@ -100,7 +103,7 @@ async function getSessionDataForTimeRange(timeRange) {
   }));
 }
 
-function buildContextFromSessions(sessions) {
+function buildContextFromSessions(sessions, relevantSessions = []) {
   if (sessions.length === 0) {
     return 'No browsing activity found for this time period.';
   }
@@ -149,6 +152,15 @@ function buildContextFromSessions(sessions) {
       });
     }
   });
+
+  if (relevantSessions.length > 0) {
+    context += '\nRelevant sessions for user query:\n';
+    relevantSessions.forEach((session, index) => {
+      const time = session.timestamp ? new Date(session.timestamp).toISOString() : 'Unknown time';
+      const minutes = Math.round((session.duration || 0) / 60000);
+      context += `- ${index + 1}. ${session.title || session.url} (${minutes}m, ${time})\n  ${session.url}\n`;
+    });
+  }
 
   return context;
 }

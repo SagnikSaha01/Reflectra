@@ -9,6 +9,7 @@
     "init-db": "node scripts/initDatabase.js"
   },
   "dependencies": {
+    "@pinecone-database/pinecone": "^6.1.3",
     "@supabase/supabase-js": "^2.80.0",
     "better-sqlite3": "^9.2.2",
     "cors": "^2.8.5",
