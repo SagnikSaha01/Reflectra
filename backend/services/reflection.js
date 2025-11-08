@@ -16,9 +16,9 @@ Your role is to:
 
 Keep responses conversational, insightful, and focused on well-being rather than productivity metrics.`;
 
-async function generateReflection(query, timeRange = 'today') {
+async function generateReflection(query, timeRange = 'today', userId) {
   // Get relevant browsing data based on time range
-  const sessionData = await getSessionDataForTimeRange(timeRange);
+  const sessionData = await getSessionDataForTimeRange(timeRange, userId);
 
   // Build context for the LLM
   const context = buildContextFromSessions(sessionData);
@@ -48,7 +48,7 @@ async function generateReflection(query, timeRange = 'today') {
   }
 }
 
-async function getSessionDataForTimeRange(timeRange) {
+async function getSessionDataForTimeRange(timeRange, userId) {
   let startTime;
   const now = Date.now();
 
@@ -80,6 +80,7 @@ async function getSessionDataForTimeRange(timeRange) {
         wellness_type
       )
     `)
+    .eq('user_id', userId)
     .gte('timestamp', startTime)
     .order('timestamp', { ascending: false })
     .limit(200);

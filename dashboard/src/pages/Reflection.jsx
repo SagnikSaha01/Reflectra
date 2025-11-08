@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import axios from 'axios'
+import api from '../utils/api'
 import { Send, Sparkles } from 'lucide-react'
 import './Reflection.css'
 
@@ -25,7 +25,7 @@ function Reflection() {
     setError(null)
 
     try {
-      const result = await axios.post('/api/reflection/ask', {
+      const result = await api.post('/reflection/ask', {
         query: question,
         timeRange: 'today'
       })

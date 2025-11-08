@@ -1,13 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const supabase = require('../db/database');
+const { authenticateUser } = require('../middleware/auth');
 
-// Get all categories
+// Apply authentication middleware to all routes
+router.use(authenticateUser);
+
+// Get all categories (global + user-specific)
 router.get('/', async (req, res) => {
   try {
     const { data: categories, error } = await supabase
       .from('categories')
       .select('*')
+      .or(`is_global.eq.true,user_id.eq.${req.user.id}`)
       .order('name');
 
     if (error) {
@@ -31,7 +36,14 @@ router.post('/', async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('categories')
-      .insert([{ name, description, color, wellness_type }])
+      .insert([{
+        name,
+        description,
+        color,
+        wellness_type,
+        user_id: req.user.id,
+        is_global: false
+      }])
       .select()
       .single();
 
@@ -66,6 +78,7 @@ router.patch('/:id', async (req, res) => {
       .from('categories')
       .update(updates)
       .eq('id', id)
+      .eq('user_id', req.user.id)
       .select();
 
     if (error) {
@@ -91,6 +104,7 @@ router.delete('/:id', async (req, res) => {
       .from('categories')
       .delete()
       .eq('id', id)
+      .eq('user_id', req.user.id)
       .select();
 
     if (error) {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import axios from 'axios'
+import api from '../utils/api'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts'
 import { Clock, Activity, TrendingUp } from 'lucide-react'
 
@@ -14,7 +14,7 @@ function Dashboard() {
 
   const fetchTodayStats = async () => {
     try {
-      const response = await axios.get('/api/stats/today')
+      const response = await api.get('/stats/today')
       setStats(response.data)
       setLoading(false)
     } catch (err) {

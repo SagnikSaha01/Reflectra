@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../db/database');
 const wellnessService = require('../services/wellness');
+const { authenticateUser } = require('../middleware/auth');
+
+// Apply authentication middleware to all routes
+router.use(authenticateUser);
 
 // Get today's stats
 router.get('/today', async (req, res) => {
@@ -14,6 +18,7 @@ router.get('/today', async (req, res) => {
     const { data: sessions, error: sessionError } = await supabase
       .from('sessions')
       .select('duration')
+      .eq('user_id', req.user.id)
       .gte('timestamp', todayTimestamp);
 
     if (sessionError) {
@@ -35,6 +40,7 @@ router.get('/today', async (req, res) => {
           color
         )
       `)
+      .eq('user_id', req.user.id)
       .gte('timestamp', todayTimestamp);
 
     if (categoryError) {
@@ -88,6 +94,7 @@ router.get('/range', async (req, res) => {
     const { data: sessions, error } = await supabase
       .from('sessions')
       .select('timestamp, duration')
+      .eq('user_id', req.user.id)
       .gte('timestamp', parseInt(startDate))
       .lte('timestamp', parseInt(endDate))
       .order('timestamp');
@@ -135,7 +142,8 @@ router.get('/categories', async (req, res) => {
           color,
           wellness_type
         )
-      `);
+      `)
+      .eq('user_id', req.user.id);
 
     if (startDate && endDate) {
       query = query
@@ -196,6 +204,7 @@ router.get('/wellness-history', async (req, res) => {
     const { data: history, error } = await supabase
       .from('wellness_scores')
       .select('*')
+      .eq('user_id', req.user.id)
       .order('date', { ascending: false })
       .limit(parseInt(days));
 

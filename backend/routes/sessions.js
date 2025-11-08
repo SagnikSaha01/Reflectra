@@ -2,12 +2,19 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../db/database');
 const categorizationService = require('../services/categorization');
+const { authenticateUser } = require('../middleware/auth');
+
+// Apply authentication middleware to all routes
+router.use(authenticateUser);
 
 // Get all sessions with optional filters
 router.get('/', async (req, res) => {
   const { startDate, endDate, categoryId, limit = 100 } = req.query;
 
   try {
+    console.log('📊 Sessions GET - User ID:', req.user.id);
+    console.log('📊 Sessions GET - Query params:', { startDate, endDate, categoryId, limit });
+
     let query = supabase
       .from('sessions')
       .select(`
@@ -17,6 +24,7 @@ router.get('/', async (req, res) => {
           color
         )
       `)
+      .eq('user_id', req.user.id)
       .order('timestamp', { ascending: false })
       .limit(parseInt(limit));
 
@@ -35,7 +43,13 @@ router.get('/', async (req, res) => {
     const { data: sessions, error } = await query;
 
     if (error) {
+      console.log('❌ Sessions GET - Query error:', error);
       return res.status(500).json({ error: error.message });
+    }
+
+    console.log('✅ Sessions GET - Found sessions:', sessions?.length || 0);
+    if (sessions && sessions.length > 0) {
+      console.log('📊 First session user_id:', sessions[0].user_id);
     }
 
     // Flatten the nested category data
@@ -46,8 +60,10 @@ router.get('/', async (req, res) => {
       categories: undefined
     }));
 
+    console.log('📊 Sessions GET - Returning:', flattenedSessions.length, 'sessions');
     res.json(flattenedSessions);
   } catch (error) {
+    console.log('❌ Sessions GET - Exception:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -56,23 +72,36 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   const { url, title, duration, timestamp } = req.body;
 
+  console.log('📝 Sessions POST - Creating session for user:', req.user.id);
+  console.log('📝 Sessions POST - Session data:', { url, title, duration, timestamp });
+
   if (!url || !duration || !timestamp) {
+    console.log('❌ Sessions POST - Missing required fields');
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
   try {
     const { data, error } = await supabase
       .from('sessions')
-      .insert([{ url, title, duration, timestamp }])
+      .insert([{
+        url,
+        title,
+        duration,
+        timestamp,
+        user_id: req.user.id
+      }])
       .select()
       .single();
 
     if (error) {
+      console.log('❌ Sessions POST - Insert error:', error);
       return res.status(500).json({ error: error.message });
     }
 
+    console.log('✅ Sessions POST - Session created with ID:', data.id);
     res.status(201).json(data);
   } catch (error) {
+    console.log('❌ Sessions POST - Exception:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -102,6 +131,7 @@ router.get('/:id', async (req, res) => {
         )
       `)
       .eq('id', id)
+      .eq('user_id', req.user.id)
       .single();
 
     if (error) {
@@ -135,6 +165,7 @@ router.patch('/:id/category', async (req, res) => {
       .from('sessions')
       .update({ category_id: categoryId })
       .eq('id', id)
+      .eq('user_id', req.user.id)
       .select();
 
     if (error) {

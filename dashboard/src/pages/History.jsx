@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import axios from 'axios'
+import api from '../utils/api'
 import { Calendar, Clock } from 'lucide-react'
 import './History.css'
 
@@ -14,11 +14,15 @@ function History() {
 
   const fetchSessions = async () => {
     try {
-      const response = await axios.get('/api/sessions?limit=50')
+      console.log('Fetching sessions...')
+      const response = await api.get('/sessions?limit=50')
+      console.log('Sessions response:', response.data)
       setSessions(response.data)
       setLoading(false)
     } catch (err) {
-      setError('Failed to load session history')
+      console.error('Error fetching sessions:', err)
+      console.error('Error response:', err.response?.data)
+      setError('Failed to load session history: ' + (err.response?.data?.message || err.message))
       setLoading(false)
     }
   }

@@ -1,6 +1,9 @@
 // Reflectra Background Service Worker
 // Tracks tab activity and manages session data
 
+// Import auth module functions
+importScripts('auth.js');
+
 const API_ENDPOINT = 'http://localhost:3000/api';
 
 let currentSession = {
@@ -9,6 +12,8 @@ let currentSession = {
   startTime: null,
   tabId: null
 };
+
+let isUserAuthenticated = false;
 
 // Track active tab changes
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
@@ -105,19 +110,55 @@ async function saveSessionLocally(sessionData) {
 
 async function sendToBackend(sessionData) {
   try {
+    console.log('🔄 Attempting to send session to backend:', sessionData);
+
+    // Check if user is authenticated
+    const authenticated = await isAuthenticated();
+    console.log('🔄 Is authenticated:', authenticated);
+
+    if (!authenticated) {
+      console.log('❌ User not authenticated, skipping backend sync');
+      return;
+    }
+
+    const token = await getAccessToken();
+    console.log('🔄 Access token:', token ? token.substring(0, 20) + '...' : 'null');
+
+    if (!token) {
+      console.error('❌ No access token available');
+      return;
+    }
+
+    console.log('🔄 Sending POST request to:', `${API_ENDPOINT}/sessions`);
     const response = await fetch(`${API_ENDPOINT}/sessions`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify(sessionData)
     });
 
+    console.log('🔄 Response status:', response.status, response.statusText);
+
     if (!response.ok) {
-      console.error('Failed to send session to backend');
+      console.error('❌ Failed to send session to backend');
+      console.error('❌ Status:', response.status, response.statusText);
+      const errorText = await response.text();
+      console.error('❌ Error body:', errorText);
+
+      // If unauthorized, clear auth and notify user
+      if (response.status === 401) {
+        console.error('❌ Unauthorized - clearing auth state');
+        await clearAuthState();
+        isUserAuthenticated = false;
+      }
+    } else {
+      const responseData = await response.json();
+      console.log('✅ Session saved successfully! ID:', responseData.id);
     }
   } catch (error) {
-    console.error('Error sending to backend:', error);
+    console.error('❌ Error sending to backend:', error);
   }
 }
 
@@ -127,8 +168,20 @@ chrome.alarms.create('categorizeSessions', { periodInMinutes: 15 });
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === 'categorizeSessions') {
     try {
+      if (!await isAuthenticated()) {
+        return;
+      }
+
+      const token = await getAccessToken();
+      if (!token) {
+        return;
+      }
+
       await fetch(`${API_ENDPOINT}/sessions/categorize`, {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
     } catch (error) {
       console.error('Error triggering categorization:', error);
@@ -136,4 +189,21 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   }
 });
 
-console.log('Reflectra background service worker initialized');
+// Check authentication status on startup
+(async () => {
+  isUserAuthenticated = await isAuthenticated();
+  console.log('Reflectra background service worker initialized');
+  console.log('Authentication status:', isUserAuthenticated);
+
+  if (!isUserAuthenticated) {
+    console.log('User not authenticated. Please log in via the extension popup.');
+  }
+})();
+
+// Listen for messages from popup
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'AUTH_STATUS_CHANGED') {
+    isUserAuthenticated = message.isAuthenticated;
+    console.log('Auth status changed:', isUserAuthenticated);
+  }
+});

@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../db/database');
 const reflectionService = require('../services/reflection');
+const { authenticateUser } = require('../middleware/auth');
+
+// Apply authentication middleware to all routes
+router.use(authenticateUser);
 
 // Ask a reflection question
 router.post('/ask', async (req, res) => {
@@ -12,7 +16,7 @@ router.post('/ask', async (req, res) => {
   }
 
   try {
-    const response = await reflectionService.generateReflection(query, timeRange);
+    const response = await reflectionService.generateReflection(query, timeRange, req.user.id);
 
     // Save reflection to database
     const { error } = await supabase
@@ -21,7 +25,8 @@ router.post('/ask', async (req, res) => {
         query,
         response: response.answer,
         context: JSON.stringify(response.context),
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        user_id: req.user.id
       }]);
 
     if (error) {
@@ -43,6 +48,7 @@ router.get('/history', async (req, res) => {
     const { data: reflections, error } = await supabase
       .from('reflections')
       .select('id, query, response, timestamp')
+      .eq('user_id', req.user.id)
       .order('timestamp', { ascending: false })
       .limit(parseInt(limit));
 
@@ -65,6 +71,7 @@ router.get('/:id', async (req, res) => {
       .from('reflections')
       .select('*')
       .eq('id', id)
+      .eq('user_id', req.user.id)
       .single();
 
     if (error) {

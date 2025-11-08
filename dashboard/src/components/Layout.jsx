@@ -1,15 +1,23 @@
-import { Link, useLocation } from 'react-router-dom'
-import { Brain, LayoutDashboard, MessageCircle, History } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Brain, LayoutDashboard, MessageCircle, History, LogOut } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
 import './Layout.css'
 
 function Layout({ children }) {
   const location = useLocation()
+  const navigate = useNavigate()
+  const { user, logout } = useAuth()
 
   const navItems = [
     { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/reflection', icon: MessageCircle, label: 'Reflection' },
     { path: '/history', icon: History, label: 'History' }
   ]
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  }
 
   return (
     <div className="layout">
@@ -31,6 +39,15 @@ function Layout({ children }) {
                 <span>{item.label}</span>
               </Link>
             ))}
+          </div>
+
+          <div className="nav-user">
+            {user && (
+              <span className="user-email">{user.email}</span>
+            )}
+            <button onClick={handleLogout} className="logout-btn" title="Sign out">
+              <LogOut size={20} />
+            </button>
           </div>
         </div>
       </nav>

@@ -16,11 +16,16 @@ app.use(express.json());
 const db = require('./db/database');
 
 // Routes
+const authRouter = require('./routes/auth');
 const sessionsRouter = require('./routes/sessions');
 const statsRouter = require('./routes/stats');
 const reflectionRouter = require('./routes/reflection');
 const categoriesRouter = require('./routes/categories');
 
+// Public routes (no authentication required)
+app.use('/api/auth', authRouter);
+
+// Protected routes (authentication required)
 app.use('/api/sessions', sessionsRouter);
 app.use('/api/stats', statsRouter);
 app.use('/api/reflection', reflectionRouter);

@@ -92,15 +92,83 @@
       font-size: 12px;
       opacity: 0.9;
     }
+
+    .auth-container {
+      text-align: center;
+      padding: 20px;
+    }
+
+    .auth-message {
+      margin-bottom: 20px;
+      color: #666;
+      font-size: 14px;
+    }
+
+    .google-btn {
+      background: white;
+      color: #444;
+      border: 1px solid #ddd;
+      margin-bottom: 12px;
+    }
+
+    .google-btn:hover {
+      background: #f8f8f8;
+    }
+
+    .user-info {
+      background: #f5f5f5;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+
+    .user-email {
+      color: #666;
+      font-size: 12px;
+    }
+
+    .logout-btn {
+      background: #f44336;
+      margin-top: 12px;
+    }
+
+    .logout-btn:hover {
+      background: #d32f2f;
+    }
+
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
 <body>
   <h1>🧠 Reflectra</h1>
 
-  <div class="wellness-score">
-    <div class="score-label">Digital Wellness Score</div>
-    <div class="score-value" id="wellnessScore">--</div>
+  <!-- Auth View (shown when not logged in) -->
+  <div id="authView" class="auth-container hidden">
+    <div class="auth-message">
+      Sign in to track your digital wellness
+    </div>
+    <p style="font-size: 12px; color: #666; margin: 0 0 16px 0;">
+      Step 1: Login on the dashboard<br>
+      Step 2: Click "Sync Session" here
+    </p>
+    <button id="openLoginPage">Open Login Page</button>
+    <button id="syncSession" style="margin-top: 12px; background: #2196F3;">Sync Session from Dashboard</button>
   </div>
+
+  <!-- Main View (shown when logged in) -->
+  <div id="mainView" class="hidden">
+    <div class="user-info" id="userInfo">
+      <div style="font-weight: 500;">Signed in</div>
+      <div class="user-email" id="userEmail"></div>
+    </div>
+
+    <div class="wellness-score">
+      <div class="score-label">Digital Wellness Score</div>
+      <div class="score-value" id="wellnessScore">--</div>
+    </div>
 
   <div class="stats">
     <div class="stat-item">
@@ -113,11 +181,14 @@
     </div>
   </div>
 
-  <h2 style="font-size: 16px; margin-bottom: 12px;">Today's Categories</h2>
-  <div id="categories"></div>
+    <h2 style="font-size: 16px; margin-bottom: 12px;">Today's Categories</h2>
+    <div id="categories"></div>
 
-  <button id="openDashboard">Open Full Dashboard</button>
+    <button id="openDashboard">Open Full Dashboard</button>
+    <button id="logout" class="logout-btn">Sign Out</button>
+  </div>
 
+  <script src="auth.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
