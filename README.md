@@ -1,3 +1,5 @@
+<img width="2498" height="700" alt="image" src="https://github.com/user-attachments/assets/ee54b8b3-d174-494a-9640-f0589148dd81" />
+
 # Reflectra - Digital Wellness Tracker
 
 **Transform your browsing data into self-awareness**
