@@ -139,10 +139,11 @@ Reflectra/
 - Chrome browser
 - Supabase account (free tier available)
 - OpenAI API key (or Anthropic Claude API key)
+- Pinecone account (serverless index for vector search)
 
 ### Installation
 
-See [docs/SETUP.md](docs/SETUP.md) for detailed setup instructions.
+See [docs/SETUP.md](docs/SETUP.md) for detailed setup instructions and [docs/PINECONE_SETUP.md](docs/PINECONE_SETUP.md) to connect the Pinecone vector database.
 
 **Quick Start:**
 
