@@ -57,3 +57,86 @@
   align-items: center;
   gap: 4px;
 }
+
+.history-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.history-controls label {
+  font-size: 14px;
+  color: #666;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.category-select {
+  min-width: 200px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  background: #fff;
+  font-size: 14px;
+  color: #1a1a1a;
+}
+
+.sort-icon-desc {
+  transform: rotate(0deg);
+  transition: transform 0.2s;
+}
+
+.sort-icon-asc {
+  transform: rotate(180deg);
+  transition: transform 0.2s;
+}
+
+.sort-button-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sort-toggle-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.sort-toggle-button:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+}
+
+.sort-type-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px;
+  height: 40px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  color: #1a1a1a;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.sort-type-button:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+}

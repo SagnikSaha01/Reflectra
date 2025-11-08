@@ -1,20 +1,44 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import axios from 'axios'
-import { Calendar, Clock } from 'lucide-react'
+import { Calendar, Clock, ArrowDownUp } from 'lucide-react'
 import './History.css'
 
 function History() {
   const [sessions, setSessions] = useState([])
+  const [categories, setCategories] = useState([])
+  const [selectedCategory, setSelectedCategory] = useState('all')
+  const [sortField, setSortField] = useState('duration')
+  const [sortOrder, setSortOrder] = useState('desc')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    fetchSessions()
+    fetchCategories()
   }, [])
 
-  const fetchSessions = async () => {
+  useEffect(() => {
+    fetchSessions(selectedCategory)
+  }, [selectedCategory])
+
+  const fetchCategories = async () => {
     try {
-      const response = await axios.get('/api/sessions?limit=50')
+      const response = await axios.get('/api/categories')
+      setCategories(response.data)
+    } catch (err) {
+      console.error('Failed to load categories', err)
+    }
+  }
+
+  const fetchSessions = async (categoryId = 'all') => {
+    setLoading(true)
+    setError(null)
+    try {
+      let url = '/api/sessions?limit=50'
+      if (categoryId !== 'all') {
+        url += `&categoryId=${categoryId}`
+      }
+
+      const response = await axios.get(url)
       setSessions(response.data)
       setLoading(false)
     } catch (err) {
@@ -53,19 +77,94 @@ function History() {
     }
   }
 
-  if (loading) {
-    return <div className="loading">Loading session history...</div>
+  const sortedSessions = useMemo(() => {
+    const list = [...sessions]
+    const getValue = (session) => {
+      if (sortField === 'recency') {
+        return session.timestamp || 0
+      }
+      return session.duration || 0
+    }
+
+    list.sort((a, b) => {
+      const valueA = getValue(a)
+      const valueB = getValue(b)
+
+      if (sortOrder === 'desc') {
+        return valueB - valueA
+      }
+      return valueA - valueB
+    })
+    return list
+  }, [sessions, sortField, sortOrder])
+
+  const toggleSortOrder = () => {
+    setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'))
   }
 
-  if (error) {
-    return <div className="error">{error}</div>
+  const toggleSortField = () => {
+    setSortField(prev => (prev === 'duration' ? 'recency' : 'duration'))
   }
+
+  const sortLabel = useMemo(() => {
+    if (sortField === 'recency') {
+      return sortOrder === 'desc' ? 'Newest → Oldest' : 'Oldest → Newest'
+    }
+    return sortOrder === 'desc' ? 'Longest → Shortest' : 'Shortest → Longest'
+  }, [sortField, sortOrder])
 
   return (
     <div>
       <h1 style={{ marginBottom: '24px', fontSize: '32px' }}>Browsing History</h1>
 
-      {sessions.length === 0 ? (
+      <div className="history-controls">
+        <div className="control-group">
+          <label htmlFor="categoryFilter">Filter by category</label>
+          <select
+            id="categoryFilter"
+            className="category-select"
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+          >
+            <option value="all">All categories</option>
+            {categories.map(category => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="control-group sort-control">
+          <label>Sort by</label>
+          <div className="sort-button-row">
+            <button
+              type="button"
+              className="sort-toggle-button"
+              onClick={toggleSortOrder}
+              title="Reverse order"
+            >
+              <ArrowDownUp
+                size={18}
+                className={sortOrder === 'desc' ? 'sort-icon-desc' : 'sort-icon-asc'}
+              />
+            </button>
+            <button
+              type="button"
+              className="sort-type-button"
+              onClick={toggleSortField}
+            >
+              {sortLabel}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="loading">Loading session history...</div>
+      ) : error ? (
+        <div className="error">{error}</div>
+      ) : sessions.length === 0 ? (
         <div className="card">
           <p style={{ textAlign: 'center', color: '#999', padding: '40px' }}>
             No browsing sessions recorded yet
@@ -74,7 +173,7 @@ function History() {
       ) : (
         <div className="card">
           <div className="session-list">
-            {sessions.map(session => (
+            {sortedSessions.map(session => (
               <div key={session.id} className="session-item">
                 <div className="session-header">
                   <div className="session-title">
