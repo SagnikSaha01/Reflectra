@@ -2,6 +2,52 @@
 
 const API_ENDPOINT = 'http://localhost:3000/api';
 
+// Live timer for current tab
+let timerInterval = null;
+
+async function updateCurrentTabTime() {
+  try {
+    // Get current session data from background script
+    const response = await chrome.runtime.sendMessage({ action: 'getCurrentSession' });
+
+    if (response && response.startTime) {
+      const elapsed = Date.now() - response.startTime;
+      document.getElementById('currentTabTime').textContent = formatLiveTime(elapsed);
+      document.getElementById('currentTabTitle').textContent = response.title || response.url || 'Current tab';
+    } else {
+      document.getElementById('currentTabTime').textContent = '0:00';
+      document.getElementById('currentTabTitle').textContent = 'No active session';
+    }
+  } catch (error) {
+    console.error('Error updating current tab time:', error);
+  }
+}
+
+function formatLiveTime(ms) {
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+// Start live timer updates
+function startLiveTimer() {
+  updateCurrentTabTime(); // Update immediately
+  timerInterval = setInterval(updateCurrentTabTime, 1000); // Update every second
+}
+
+// Stop timer when popup closes
+window.addEventListener('unload', () => {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+  }
+});
+
 async function loadTodayStats() {
   try {
     const response = await fetch(`${API_ENDPOINT}/stats/today`);
@@ -50,5 +96,6 @@ document.getElementById('openDashboard').addEventListener('click', () => {
   chrome.tabs.create({ url: 'http://localhost:3001' });
 });
 
-// Load stats on popup open
+// Load stats and start live timer on popup open
 loadTodayStats();
+startLiveTimer();

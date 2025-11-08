@@ -12,15 +12,36 @@ let currentSession = {
 
 // Track active tab changes
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
-  await endCurrentSession();
-  await startNewSession(activeInfo.tabId);
+  try {
+    const tab = await chrome.tabs.get(activeInfo.tabId);
+
+    // If switching to a chrome:// or extension page, don't end the session
+    // The user is likely just opening settings or the extension popup
+    if (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
+      console.log('Ignoring switch to internal Chrome page:', tab.url);
+      return;
+    }
+
+    await endCurrentSession();
+    await startNewSession(activeInfo.tabId);
+  } catch (error) {
+    console.error('Error handling tab activation:', error);
+  }
 });
 
 // Track tab updates (URL changes within same tab)
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (changeInfo.status === 'complete' && tab.active) {
-    await endCurrentSession();
-    await startNewSession(tabId);
+  // Only restart session if the URL actually changed and it's the active tab
+  if (changeInfo.url && tab.active) {
+    // Check if this is a meaningful URL change (not just hash/query params on same page)
+    const oldUrl = currentSession.url;
+    const newUrl = changeInfo.url;
+
+    // If URL changed to a different page, restart the session
+    if (oldUrl !== newUrl) {
+      await endCurrentSession();
+      await startNewSession(tabId);
+    }
   }
 });
 
@@ -61,12 +82,17 @@ async function startNewSession(tabId) {
 }
 
 async function endCurrentSession() {
-  if (!currentSession.startTime) return;
+  if (!currentSession.startTime) {
+    console.log('No active session to end');
+    return;
+  }
 
   const duration = Date.now() - currentSession.startTime;
+  const sessionTitle = currentSession.title || currentSession.url;
 
   // Only track sessions longer than 3 seconds
   if (duration < 3000) {
+    console.log(`Session too short (${Math.round(duration / 1000)}s), not saving:`, sessionTitle);
     currentSession = { url: null, title: null, startTime: null, tabId: null };
     return;
   }
@@ -78,13 +104,20 @@ async function endCurrentSession() {
     timestamp: currentSession.startTime
   };
 
+  // Reset current session BEFORE saving to prevent double-saves
+  currentSession = { url: null, title: null, startTime: null, tabId: null };
+
+  // Log the session being saved with human-readable time and caller info
+  const minutes = Math.floor(duration / 60000);
+  const seconds = Math.floor((duration % 60000) / 1000);
+  console.log(`✓ SAVING SESSION: "${sessionData.title}" - Duration: ${minutes}m ${seconds}s (${duration}ms)`);
+  console.trace('Called from:'); // Shows stack trace to identify caller
+
   // Save to local storage
   await saveSessionLocally(sessionData);
 
   // Send to backend API
   await sendToBackend(sessionData);
-
-  currentSession = { url: null, title: null, startTime: null, tabId: null };
 }
 
 async function saveSessionLocally(sessionData) {
@@ -134,6 +167,20 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
       console.error('Error triggering categorization:', error);
     }
   }
+});
+
+// Message listener for popup requests
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'getCurrentSession') {
+    // Send current session data to popup
+    sendResponse({
+      url: currentSession.url,
+      title: currentSession.title,
+      startTime: currentSession.startTime,
+      tabId: currentSession.tabId
+    });
+  }
+  return true; // Keep message channel open for async response
 });
 
 console.log('Reflectra background service worker initialized');

@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(mkdir:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(nul)",
+      "Bash(dir:*)",
+      "Bash(find:*)",
+      "Bash(npm start)"
     ],
     "deny": [],
     "ask": []

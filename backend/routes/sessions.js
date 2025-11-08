@@ -61,9 +61,19 @@ router.post('/', async (req, res) => {
   }
 
   try {
+    // Try to categorize immediately using pattern matching
+    const categoryId = await categorizationService.categorizeSession(url, title);
+
+    // Insert session with category if found
     const { data, error } = await supabase
       .from('sessions')
-      .insert([{ url, title, duration, timestamp }])
+      .insert([{
+        url,
+        title,
+        duration,
+        timestamp,
+        category_id: categoryId // Will be null if no match, gets categorized later by cron job
+      }])
       .select()
       .single();
 
