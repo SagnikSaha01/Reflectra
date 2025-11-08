@@ -17,7 +17,7 @@ function Layout({ children }) {
         <div className="nav-content">
           <div className="nav-brand">
             <Brain size={28} />
-            <span>MindTime</span>
+            <span>Reflectra</span>
           </div>
 
           <div className="nav-links">

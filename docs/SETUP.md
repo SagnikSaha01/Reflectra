@@ -1,6 +1,6 @@
-# MindTime Setup Guide
+# Reflectra Setup Guide
 
-Complete setup instructions to get MindTime running on your machine.
+Complete setup instructions to get Reflectra running on your machine.
 
 ---
 
@@ -10,6 +10,7 @@ Complete setup instructions to get MindTime running on your machine.
 - **Node.js** 18.0 or higher ([Download](https://nodejs.org/))
 - **npm** (comes with Node.js)
 - **Google Chrome** browser
+- **Supabase Account** ([Sign up here](https://supabase.com)) - FREE TIER AVAILABLE
 - **OpenAI API Key** ([Get one here](https://platform.openai.com/api-keys))
 
 ### Optional
@@ -34,7 +35,42 @@ cd c:/Users/saha_/Desktop/DukeAI2025/Reflectra
 
 ---
 
-## Step 2: Backend Setup
+## Step 2: Database Setup (Supabase)
+
+Before setting up the backend, you need to configure your Supabase database.
+
+### Quick Setup Steps:
+
+1. **Create a Supabase Project**
+   - Go to [https://supabase.com](https://supabase.com)
+   - Sign in/Sign up (free tier available)
+   - Click "New Project" and fill in the details
+
+2. **Run the Database Migration**
+   - Open your Supabase dashboard
+   - Go to **SQL Editor** (left sidebar)
+   - Copy the SQL from `backend/db/supabase-migrations/001_initial_schema.sql`
+   - Paste and click "Run"
+
+3. **Get Your Credentials**
+   - In Supabase dashboard, go to **Settings** > **API**
+   - Copy your **Project URL** and **anon/public key**
+
+4. **Enable Database Access**
+   - In Supabase dashboard, go to **Authentication** > **Policies**
+   - Run this SQL to enable access:
+   ```sql
+   ALTER TABLE categories DISABLE ROW LEVEL SECURITY;
+   ALTER TABLE sessions DISABLE ROW LEVEL SECURITY;
+   ALTER TABLE wellness_scores DISABLE ROW LEVEL SECURITY;
+   ALTER TABLE reflections DISABLE ROW LEVEL SECURITY;
+   ```
+
+**For detailed instructions, see:** [backend/db/SUPABASE_SETUP.md](../backend/db/SUPABASE_SETUP.md)
+
+---
+
+## Step 3: Backend Setup
 
 ### Install Dependencies
 
@@ -45,11 +81,9 @@ npm install
 
 ### Configure Environment Variables
 
-```bash
-# Copy the example .env file
-cp .env.example .env
+Open `backend/.env` in your text editor:
 
-# Open .env in your text editor
+```bash
 # On Windows:
 notepad .env
 
@@ -57,16 +91,24 @@ notepad .env
 nano .env
 ```
 
-**Edit the .env file:**
+**Edit the .env file with your credentials:**
 
 ```env
 PORT=3000
-DATABASE_PATH=./data/mindtime.db
+
+# Supabase Database Configuration
+SUPABASE_URL=https://wrjwoitalkdfkdkwilun.supabase.co
+SUPABASE_KEY=your-anon-public-key-here
+
+# OpenAI API
 OPENAI_API_KEY=sk-your-actual-api-key-here
 OPENAI_MODEL=gpt-4o-mini
 ```
 
-> **Important:** Replace `sk-your-actual-api-key-here` with your real OpenAI API key!
+> **Important:**
+> - Replace `SUPABASE_URL` with your Supabase project URL
+> - Replace `SUPABASE_KEY` with your Supabase anon key
+> - Replace `OPENAI_API_KEY` with your real OpenAI API key
 
 ### Start the Backend Server
 
@@ -80,20 +122,23 @@ npm start
 
 You should see:
 ```
-🧠 MindTime backend running on http://localhost:3000
+Database connection established successfully
+🧠 Reflectra backend running on http://localhost:3000
 ```
 
 **Test the backend:**
 
-Open http://localhost:3000/health in your browser. You should see:
+```bash
+# Test health endpoint
+curl http://localhost:3000/health
 
-```json
-{"status":"healthy","timestamp":"2025-..."}
+# Test categories (should return 8 default categories)
+curl http://localhost:3000/api/categories
 ```
 
 ---
 
-## Step 3: Dashboard Setup
+## Step 4: Dashboard Setup
 
 Open a **new terminal** (keep the backend running).
 
@@ -121,7 +166,7 @@ Visit http://localhost:3001 in your browser.
 
 ---
 
-## Step 4: Chrome Extension Setup
+## Step 5: Chrome Extension Setup
 
 ### Load the Extension
 
@@ -132,24 +177,24 @@ Visit http://localhost:3001 in your browser.
 5. Navigate to your project folder and select the `chrome-extension` folder
 6. Click **"Select Folder"**
 
-The MindTime extension should now appear in your extensions list!
+The Reflectra extension should now appear in your extensions list!
 
 ### Pin the Extension
 
 1. Click the puzzle piece icon (🧩) in Chrome toolbar
-2. Find "MindTime - Digital Wellness Tracker"
+2. Find "Reflectra - Digital Wellness Tracker"
 3. Click the pin icon to keep it visible
 
 ### Test the Extension
 
-1. Click the MindTime icon in your toolbar
+1. Click the Reflectra icon in your toolbar
 2. You should see a popup with your daily stats (will show 0 initially)
 3. Browse a few websites and wait ~30 seconds
 4. Check the popup again - you should see session data
 
 ---
 
-## Step 5: Verify Everything Works
+## Step 6: Verify Everything Works
 
 ### Test Flow
 
@@ -202,11 +247,11 @@ Or wait 15 minutes for automatic categorization.
 
 **Check background service worker:**
 1. Go to `chrome://extensions/`
-2. Click **"Inspect views: service worker"** under MindTime
+2. Click **"Inspect views: service worker"** under Reflectra
 3. Look for errors or session logs
 
 **Common issue:** Extension disabled
-- Make sure the extension is enabled in `chrome://extensions/`
+- Make sure Reflectra extension is enabled in `chrome://extensions/`
 
 ### Categorization not working
 
@@ -217,10 +262,17 @@ Or wait 15 minutes for automatic categorization.
 
 ### Database errors
 
-**Error:** `SQLITE_ERROR: no such table`
-- The database auto-initializes on first run
-- Check that `backend/data/` folder exists
-- Delete `backend/data/mindtime.db` and restart the backend
+**Error:** `Missing Supabase credentials`
+- Check that `SUPABASE_URL` and `SUPABASE_KEY` are set in `.env`
+- Restart the backend after updating environment variables
+
+**Error:** `relation "sessions" does not exist`
+- You need to run the migration SQL in Supabase SQL Editor
+- See [backend/db/SUPABASE_SETUP.md](../backend/db/SUPABASE_SETUP.md)
+
+**Error:** `new row violates row level security policy`
+- You need to disable RLS or create policies
+- See the RLS section in [backend/db/SUPABASE_SETUP.md](../backend/db/SUPABASE_SETUP.md)
 
 ---
 
@@ -232,7 +284,7 @@ Or wait 15 minutes for automatic categorization.
 - **Dashboard:** Uses Vite - changes reflect instantly
 - **Extension:** Requires manual reload:
   1. Go to `chrome://extensions/`
-  2. Click the refresh icon on MindTime extension
+  2. Click the refresh icon on Reflectra extension
 
 ### Viewing Logs
 
@@ -243,7 +295,7 @@ Or wait 15 minutes for automatic categorization.
 
 **Extension logs:**
 ```
-chrome://extensions/ → Inspect views → service worker
+chrome://extensions/ → Inspect views → service worker (under Reflectra)
 ```
 
 **Dashboard logs:**
@@ -253,9 +305,10 @@ Browser DevTools (F12) → Console
 
 ### Database Inspection
 
-Install a SQLite browser:
-- [DB Browser for SQLite](https://sqlitebrowser.org/)
-- Open `backend/data/mindtime.db`
+View your data in the Supabase dashboard:
+- Go to **Table Editor** in your Supabase project
+- Browse sessions, categories, wellness_scores, and reflections tables
+- Run custom SQL queries in the **SQL Editor**
 
 ---
 
@@ -300,7 +353,8 @@ Package for Chrome Web Store:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | 3000 | Backend server port |
-| `DATABASE_PATH` | ./data/mindtime.db | SQLite database location |
+| `SUPABASE_URL` | (required) | Your Supabase project URL |
+| `SUPABASE_KEY` | (required) | Your Supabase anon/public key |
 | `OPENAI_API_KEY` | (required) | OpenAI API key for AI features |
 | `OPENAI_MODEL` | gpt-4o-mini | Model to use for categorization |
 | `BATCH_CATEGORIZE_INTERVAL` | 15 | Minutes between auto-categorization |

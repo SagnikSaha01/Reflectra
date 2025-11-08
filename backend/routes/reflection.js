@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db/database');
+const supabase = require('../db/database');
 const reflectionService = require('../services/reflection');
 
 // Ask a reflection question
@@ -15,10 +15,18 @@ router.post('/ask', async (req, res) => {
     const response = await reflectionService.generateReflection(query, timeRange);
 
     // Save reflection to database
-    db.prepare(`
-      INSERT INTO reflections (query, response, context, timestamp)
-      VALUES (?, ?, ?, ?)
-    `).run(query, response.answer, JSON.stringify(response.context), Date.now());
+    const { error } = await supabase
+      .from('reflections')
+      .insert([{
+        query,
+        response: response.answer,
+        context: JSON.stringify(response.context),
+        timestamp: Date.now()
+      }]);
+
+    if (error) {
+      console.error('Error saving reflection:', error.message);
+    }
 
     res.json(response);
   } catch (error) {
@@ -28,16 +36,19 @@ router.post('/ask', async (req, res) => {
 });
 
 // Get reflection history
-router.get('/history', (req, res) => {
+router.get('/history', async (req, res) => {
   const { limit = 20 } = req.query;
 
   try {
-    const reflections = db.prepare(`
-      SELECT id, query, response, timestamp
-      FROM reflections
-      ORDER BY timestamp DESC
-      LIMIT ?
-    `).all(parseInt(limit));
+    const { data: reflections, error } = await supabase
+      .from('reflections')
+      .select('id, query, response, timestamp')
+      .order('timestamp', { ascending: false })
+      .limit(parseInt(limit));
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
 
     res.json(reflections);
   } catch (error) {
@@ -46,14 +57,21 @@ router.get('/history', (req, res) => {
 });
 
 // Get specific reflection
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    const reflection = db.prepare('SELECT * FROM reflections WHERE id = ?').get(id);
+    const { data: reflection, error } = await supabase
+      .from('reflections')
+      .select('*')
+      .eq('id', id)
+      .single();
 
-    if (!reflection) {
-      return res.status(404).json({ error: 'Reflection not found' });
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Reflection not found' });
+      }
+      return res.status(500).json({ error: error.message });
     }
 
     res.json(reflection);

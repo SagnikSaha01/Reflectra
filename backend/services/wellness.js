@@ -1,4 +1,4 @@
-const db = require('../db/database');
+const supabase = require('../db/database');
 
 /**
  * Calculate Digital Wellness Score (0-100)
@@ -90,7 +90,7 @@ function getWellnessType(categoryName) {
   return mapping[categoryName] || 'unknown';
 }
 
-function saveDailyWellnessScore(date, score, categoryData) {
+async function saveDailyWellnessScore(date, score, categoryData) {
   const wellnessTime = {
     focus_time: 0,
     learning_time: 0,
@@ -122,21 +122,23 @@ function saveDailyWellnessScore(date, score, categoryData) {
     }
   });
 
-  const stmt = db.prepare(`
-    INSERT OR REPLACE INTO wellness_scores
-    (date, score, focus_time, learning_time, rest_time, social_time, mindless_time)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `);
+  const { error } = await supabase
+    .from('wellness_scores')
+    .upsert({
+      date,
+      score,
+      focus_time: wellnessTime.focus_time,
+      learning_time: wellnessTime.learning_time,
+      rest_time: wellnessTime.rest_time,
+      social_time: wellnessTime.social_time,
+      mindless_time: wellnessTime.mindless_time
+    }, {
+      onConflict: 'date'
+    });
 
-  stmt.run(
-    date,
-    score,
-    wellnessTime.focus_time,
-    wellnessTime.learning_time,
-    wellnessTime.rest_time,
-    wellnessTime.social_time,
-    wellnessTime.mindless_time
-  );
+  if (error) {
+    console.error('Error saving wellness score:', error.message);
+  }
 }
 
 function getFocusRestRatio(categoryData) {

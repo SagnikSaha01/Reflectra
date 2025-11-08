@@ -9,12 +9,13 @@
     "init-db": "node scripts/initDatabase.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
+    "@supabase/supabase-js": "^2.80.0",
+    "better-sqlite3": "^9.2.2",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "better-sqlite3": "^9.2.2",
-    "openai": "^4.20.1",
-    "node-cron": "^3.0.3"
+    "express": "^4.18.2",
+    "node-cron": "^3.0.3",
+    "openai": "^4.20.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

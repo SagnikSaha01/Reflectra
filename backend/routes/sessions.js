@@ -1,48 +1,59 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db/database');
+const supabase = require('../db/database');
 const categorizationService = require('../services/categorization');
 
 // Get all sessions with optional filters
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const { startDate, endDate, categoryId, limit = 100 } = req.query;
 
-  let query = 'SELECT s.*, c.name as category_name, c.color as category_color FROM sessions s LEFT JOIN categories c ON s.category_id = c.id';
-  const conditions = [];
-  const params = [];
-
-  if (startDate) {
-    conditions.push('s.timestamp >= ?');
-    params.push(parseInt(startDate));
-  }
-
-  if (endDate) {
-    conditions.push('s.timestamp <= ?');
-    params.push(parseInt(endDate));
-  }
-
-  if (categoryId) {
-    conditions.push('s.category_id = ?');
-    params.push(parseInt(categoryId));
-  }
-
-  if (conditions.length > 0) {
-    query += ' WHERE ' + conditions.join(' AND ');
-  }
-
-  query += ' ORDER BY s.timestamp DESC LIMIT ?';
-  params.push(parseInt(limit));
-
   try {
-    const sessions = db.prepare(query).all(...params);
-    res.json(sessions);
+    let query = supabase
+      .from('sessions')
+      .select(`
+        *,
+        categories:category_id (
+          name,
+          color
+        )
+      `)
+      .order('timestamp', { ascending: false })
+      .limit(parseInt(limit));
+
+    if (startDate) {
+      query = query.gte('timestamp', parseInt(startDate));
+    }
+
+    if (endDate) {
+      query = query.lte('timestamp', parseInt(endDate));
+    }
+
+    if (categoryId) {
+      query = query.eq('category_id', parseInt(categoryId));
+    }
+
+    const { data: sessions, error } = await query;
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    // Flatten the nested category data
+    const flattenedSessions = sessions.map(session => ({
+      ...session,
+      category_name: session.categories?.name || null,
+      category_color: session.categories?.color || null,
+      categories: undefined
+    }));
+
+    res.json(flattenedSessions);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
 // Create new session
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const { url, title, duration, timestamp } = req.body;
 
   if (!url || !duration || !timestamp) {
@@ -50,20 +61,17 @@ router.post('/', (req, res) => {
   }
 
   try {
-    const stmt = db.prepare(`
-      INSERT INTO sessions (url, title, duration, timestamp)
-      VALUES (?, ?, ?, ?)
-    `);
+    const { data, error } = await supabase
+      .from('sessions')
+      .insert([{ url, title, duration, timestamp }])
+      .select()
+      .single();
 
-    const result = stmt.run(url, title, duration, timestamp);
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
 
-    res.status(201).json({
-      id: result.lastInsertRowid,
-      url,
-      title,
-      duration,
-      timestamp
-    });
+    res.status(201).json(data);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -80,37 +88,60 @@ router.post('/categorize', async (req, res) => {
 });
 
 // Get session by ID
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    const session = db.prepare(`
-      SELECT s.*, c.name as category_name, c.color as category_color
-      FROM sessions s
-      LEFT JOIN categories c ON s.category_id = c.id
-      WHERE s.id = ?
-    `).get(id);
+    const { data: session, error } = await supabase
+      .from('sessions')
+      .select(`
+        *,
+        categories:category_id (
+          name,
+          color
+        )
+      `)
+      .eq('id', id)
+      .single();
 
-    if (!session) {
-      return res.status(404).json({ error: 'Session not found' });
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Session not found' });
+      }
+      return res.status(500).json({ error: error.message });
     }
 
-    res.json(session);
+    // Flatten the nested category data
+    const flattenedSession = {
+      ...session,
+      category_name: session.categories?.name || null,
+      category_color: session.categories?.color || null,
+      categories: undefined
+    };
+
+    res.json(flattenedSession);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
 // Update session category
-router.patch('/:id/category', (req, res) => {
+router.patch('/:id/category', async (req, res) => {
   const { id } = req.params;
   const { categoryId } = req.body;
 
   try {
-    const stmt = db.prepare('UPDATE sessions SET category_id = ? WHERE id = ?');
-    const result = stmt.run(categoryId, id);
+    const { data, error } = await supabase
+      .from('sessions')
+      .update({ category_id: categoryId })
+      .eq('id', id)
+      .select();
 
-    if (result.changes === 0) {
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    if (!data || data.length === 0) {
       return res.status(404).json({ error: 'Session not found' });
     }
 

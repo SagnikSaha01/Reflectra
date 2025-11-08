@@ -1,5 +1,5 @@
 const OpenAI = require('openai');
-const db = require('../db/database');
+const supabase = require('../db/database');
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -18,7 +18,7 @@ Keep responses conversational, insightful, and focused on well-being rather than
 
 async function generateReflection(query, timeRange = 'today') {
   // Get relevant browsing data based on time range
-  const sessionData = getSessionDataForTimeRange(timeRange);
+  const sessionData = await getSessionDataForTimeRange(timeRange);
 
   // Build context for the LLM
   const context = buildContextFromSessions(sessionData);
@@ -48,7 +48,7 @@ async function generateReflection(query, timeRange = 'today') {
   }
 }
 
-function getSessionDataForTimeRange(timeRange) {
+async function getSessionDataForTimeRange(timeRange) {
   let startTime;
   const now = Date.now();
 
@@ -68,22 +68,36 @@ function getSessionDataForTimeRange(timeRange) {
       startTime = now - (24 * 60 * 60 * 1000); // Last 24 hours
   }
 
-  const sessions = db.prepare(`
-    SELECT
-      s.url,
-      s.title,
-      s.duration,
-      s.timestamp,
-      c.name as category,
-      c.wellness_type
-    FROM sessions s
-    LEFT JOIN categories c ON s.category_id = c.id
-    WHERE s.timestamp >= ?
-    ORDER BY s.timestamp DESC
-    LIMIT 200
-  `).all(startTime);
+  const { data: sessions, error } = await supabase
+    .from('sessions')
+    .select(`
+      url,
+      title,
+      duration,
+      timestamp,
+      categories:category_id (
+        name,
+        wellness_type
+      )
+    `)
+    .gte('timestamp', startTime)
+    .order('timestamp', { ascending: false })
+    .limit(200);
 
-  return sessions;
+  if (error) {
+    console.error('Error fetching sessions:', error.message);
+    return [];
+  }
+
+  // Flatten the nested category data
+  return sessions.map(session => ({
+    url: session.url,
+    title: session.title,
+    duration: session.duration,
+    timestamp: session.timestamp,
+    category: session.categories?.name || 'Uncategorized',
+    wellness_type: session.categories?.wellness_type || 'unknown'
+  }));
 }
 
 function buildContextFromSessions(sessions) {
@@ -140,7 +154,7 @@ function buildContextFromSessions(sessions) {
 }
 
 async function generateWeeklySummary() {
-  const sessions = getSessionDataForTimeRange('week');
+  const sessions = await getSessionDataForTimeRange('week');
   const context = buildContextFromSessions(sessions);
 
   const summaryPrompt = `Create a thoughtful weekly summary of this browsing activity. Focus on:

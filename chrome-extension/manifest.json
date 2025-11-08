@@ -1,13 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "MindTime - Digital Wellness Tracker",
+  "name": "Reflectra - Digital Wellness Tracker",
   "version": "1.0.0",
   "description": "Track your digital well-being by understanding your browsing patterns and intent",
   "permissions": [
     "tabs",
     "storage",
     "activeTab",
-    "scripting"
+    "scripting",
+    "alarms"
   ],
   "host_permissions": [
     "<all_urls>"

@@ -1,4 +1,4 @@
-// MindTime Background Service Worker
+// Reflectra Background Service Worker
 // Tracks tab activity and manages session data
 
 const API_ENDPOINT = 'http://localhost:3000/api';
@@ -136,4 +136,4 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   }
 });
 
-console.log('MindTime background service worker initialized');
+console.log('Reflectra background service worker initialized');

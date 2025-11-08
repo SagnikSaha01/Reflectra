@@ -1,14 +1,14 @@
-# MindTime - Digital Wellness Tracker
+# Reflectra - Digital Wellness Tracker
 
 **Transform your browsing data into self-awareness**
 
-MindTime is a Chrome extension that tracks your online behavior and helps you understand your digital well-being through AI-powered insights and reflective analytics.
+Reflectra is a Chrome extension that tracks your online behavior and helps you understand your digital well-being through AI-powered insights and reflective analytics.
 
 ---
 
 ## 🎯 Project Overview
 
-MindTime moves beyond traditional productivity tracking to focus on **digital wellness**. Instead of judging you for "wasted time," it helps you:
+Reflectra moves beyond traditional productivity tracking to focus on **digital wellness**. Instead of judging you for "wasted time," it helps you:
 
 - Understand your browsing *intent* (Learning, Relaxation, Focus, etc.)
 - Reflect on your digital behavior patterns
@@ -54,7 +54,8 @@ Reflectra/
 ├── backend/               # Node.js API server
 │   ├── server.js          # Express server setup
 │   ├── db/
-│   │   └── database.js    # SQLite database initialization
+│   │   ├── database.js    # Supabase database connection
+│   │   └── supabase-migrations/  # SQL migration files
 │   ├── routes/
 │   │   ├── sessions.js    # Session CRUD operations
 │   │   ├── stats.js       # Statistics and analytics
@@ -64,7 +65,7 @@ Reflectra/
 │   │   ├── categorization.js  # LLM-based session categorization
 │   │   ├── reflection.js      # RAG-powered reflection AI
 │   │   └── wellness.js        # Wellness score calculation
-│   ├── .env.example       # Environment variables template
+│   ├── .env               # Environment variables
 │   └── package.json
 │
 ├── dashboard/             # React web dashboard
@@ -82,7 +83,8 @@ Reflectra/
 │   └── package.json
 │
 └── docs/
-    └── SETUP.md           # Setup instructions
+    ├── SETUP.md           # Setup instructions
+    └── SUPABASE_SETUP.md  # Supabase database setup guide
 ```
 
 ---
@@ -112,9 +114,10 @@ Reflectra/
    - Ask: "Summarize my browsing patterns"
    - AI generates insights from your actual data
 
-5. **SQLite Database**
+5. **Supabase Cloud Database**
    - Stores sessions, categories, wellness scores
    - Reflection history
+   - Cloud-hosted PostgreSQL
 
 ### 🔮 Future Enhancements
 
@@ -132,6 +135,7 @@ Reflectra/
 
 - Node.js 18+ and npm
 - Chrome browser
+- Supabase account (free tier available)
 - OpenAI API key (or Anthropic Claude API key)
 
 ### Installation
@@ -144,20 +148,29 @@ See [docs/SETUP.md](docs/SETUP.md) for detailed setup instructions.
 # 1. Install backend dependencies
 cd backend
 npm install
-cp .env.example .env
-# Edit .env and add your OPENAI_API_KEY
 
-# 2. Start backend server
+# 2. Set up Supabase database
+# - Create a Supabase project at https://supabase.com
+# - Run the migration SQL from backend/db/supabase-migrations/001_initial_schema.sql
+# - Get your credentials from Supabase dashboard
+
+# 3. Configure environment variables
+# Edit backend/.env and add:
+# - SUPABASE_URL
+# - SUPABASE_KEY
+# - OPENAI_API_KEY
+
+# 4. Start backend server
 npm run dev
 
-# 3. Install dashboard dependencies
+# 5. Install dashboard dependencies
 cd ../dashboard
 npm install
 
-# 4. Start dashboard
+# 6. Start dashboard
 npm run dev
 
-# 5. Load Chrome extension
+# 7. Load Chrome extension
 # - Open chrome://extensions/
 # - Enable "Developer mode"
 # - Click "Load unpacked"
@@ -172,7 +185,7 @@ npm run dev
 |-------|-----------|------|
 | Extension | Chrome Manifest V3 | Required for modern Chrome extensions |
 | Backend | Node.js + Express | Fast, simple API server |
-| Database | SQLite (better-sqlite3) | Lightweight, no setup required |
+| Database | Supabase (PostgreSQL) | Cloud-hosted, real-time, free tier |
 | AI | OpenAI GPT-4o-mini | Categorization + RAG reflection |
 | Frontend | React + Vite | Fast dev experience, modern UI |
 | Charts | Recharts | Beautiful, customizable charts |
@@ -231,7 +244,7 @@ AI: "Today you spent 45 minutes on React documentation,
 
 **Wellness, not Productivity**
 
-MindTime is designed to:
+Reflectra is designed to:
 - ✅ Build self-awareness
 - ✅ Encourage balanced digital habits
 - ✅ Support reflection without judgment
@@ -240,7 +253,7 @@ MindTime is designed to:
 
 **Privacy-First**
 
-- All data stored locally or on your own server
+- All data stored in your own Supabase account
 - No third-party analytics
 - You control your data
 

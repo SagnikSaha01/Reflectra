@@ -1,5 +1,5 @@
 const OpenAI = require('openai');
-const db = require('../db/database');
+const supabase = require('../db/database');
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -44,25 +44,43 @@ async function categorizeSession(url, title) {
     const categoryName = response.choices[0].message.content.trim();
 
     // Get category ID from database
-    const category = db.prepare('SELECT id FROM categories WHERE name = ?').get(categoryName);
+    const { data: category, error } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('name', categoryName)
+      .single();
+
+    if (error) {
+      console.error('Error fetching category:', error.message);
+      return null;
+    }
 
     return category ? category.id : null;
   } catch (error) {
     console.error('Error categorizing session:', error.message);
     // Return Uncategorized category as fallback
-    const uncategorized = db.prepare('SELECT id FROM categories WHERE name = ?').get('Uncategorized');
+    const { data: uncategorized } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('name', 'Uncategorized')
+      .single();
+
     return uncategorized ? uncategorized.id : null;
   }
 }
 
 async function categorizeUncategorizedSessions() {
-  const uncategorizedSessions = db.prepare(`
-    SELECT id, url, title
-    FROM sessions
-    WHERE category_id IS NULL
-    ORDER BY timestamp DESC
-    LIMIT 50
-  `).all();
+  const { data: uncategorizedSessions, error } = await supabase
+    .from('sessions')
+    .select('id, url, title')
+    .is('category_id', null)
+    .order('timestamp', { ascending: false })
+    .limit(50);
+
+  if (error) {
+    console.error('Error fetching uncategorized sessions:', error.message);
+    return { error: error.message, categorized: 0 };
+  }
 
   if (uncategorizedSessions.length === 0) {
     return { message: 'No uncategorized sessions found', categorized: 0 };
@@ -76,8 +94,14 @@ async function categorizeUncategorizedSessions() {
     const categoryId = await categorizeSession(session.url, session.title);
 
     if (categoryId) {
-      db.prepare('UPDATE sessions SET category_id = ? WHERE id = ?').run(categoryId, session.id);
-      categorized++;
+      const { error: updateError } = await supabase
+        .from('sessions')
+        .update({ category_id: categoryId })
+        .eq('id', session.id);
+
+      if (!updateError) {
+        categorized++;
+      }
     }
 
     // Add small delay to avoid rate limiting
