@@ -1,16 +1,16 @@
 <img width="2498" height="700" alt="image" src="https://github.com/user-attachments/assets/ee54b8b3-d174-494a-9640-f0589148dd81" />
 
-# MindTime - Digital Wellness Tracker
+# Reflectra - Digital Wellness Tracker
 
 **Transform your browsing data into self-awareness**
 
-MindTime is a Chrome extension that tracks your online behavior and helps you understand your digital well-being through AI-powered insights and reflective analytics.
+Reflectra is a Chrome extension that tracks your online behavior and helps you understand your digital well-being through AI-powered insights and reflective analytics.
 
 ---
 
 ## 🎯 Project Overview
 
-MindTime moves beyond traditional productivity tracking to focus on **digital wellness**. Instead of judging you for "wasted time," it helps you:
+Reflectra moves beyond traditional productivity tracking to focus on **digital wellness**. Instead of judging you for "wasted time," it helps you:
 
 - Understand your browsing *intent* (Learning, Relaxation, Focus, etc.)
 - Reflect on your digital behavior patterns
@@ -233,7 +233,7 @@ AI: "Today you spent 45 minutes on React documentation,
 
 **Wellness, not Productivity**
 
-MindTime is designed to:
+Reflectra is designed to:
 - ✅ Build self-awareness
 - ✅ Encourage balanced digital habits
 - ✅ Support reflection without judgment
