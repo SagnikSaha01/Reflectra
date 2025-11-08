@@ -34,5 +34,3 @@ Thumbs.db
 logs/
 *.log
 
-# Chrome extension
-chrome-extension/icons/*.png
