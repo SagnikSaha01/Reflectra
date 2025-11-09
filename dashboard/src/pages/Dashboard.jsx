@@ -63,14 +63,14 @@ function Dashboard() {
         </div>
 
         <div className="stat-card">
-          <Clock size={32} color="#4CAF50" style={{ margin: '0 auto' }} />
+          <Clock size={32} color="var(--accent-color)" style={{ margin: '0 auto' }} />
           <div className="stat-value">{formatTime(stats.totalTime)}</div>
           <div className="stat-label">Total Time</div>
         </div>
 
         <div className="stat-card">
-          <Activity size={32} color="#2196F3" style={{ margin: '0 auto' }} />
-          <div className="stat-value" style={{ color: '#2196F3' }}>{stats.sessionCount}</div>
+          <Activity size={32} color="var(--accent-secondary)" style={{ margin: '0 auto' }} />
+          <div className="stat-value" style={{ color: 'var(--accent-secondary)' }}>{stats.sessionCount}</div>
           <div className="stat-label">Sessions</div>
         </div>
       </div>
@@ -99,7 +99,7 @@ function Dashboard() {
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <p style={{ textAlign: 'center', color: '#999', padding: '40px' }}>
+            <p style={{ textAlign: 'center', color: 'var(--muted-text)', padding: '40px' }}>
               No activity yet today
             </p>
           )}

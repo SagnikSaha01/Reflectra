@@ -9,6 +9,7 @@ function History() {
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [sortField, setSortField] = useState('duration')
   const [sortOrder, setSortOrder] = useState('desc')
+  const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -77,8 +78,24 @@ function History() {
     }
   }
 
+  const filteredSessions = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return sessions
+    }
+
+    const term = searchTerm.toLowerCase()
+
+    return sessions.filter(session => {
+      const title = session.title?.toLowerCase() || ''
+      const url = session.url?.toLowerCase() || ''
+      const domain = (getDomain(session.url) || '').toLowerCase()
+
+      return title.includes(term) || url.includes(term) || domain.includes(term)
+    })
+  }, [sessions, searchTerm])
+
   const sortedSessions = useMemo(() => {
-    const list = [...sessions]
+    const list = [...filteredSessions]
     const getValue = (session) => {
       if (sortField === 'recency') {
         return session.timestamp || 0
@@ -96,7 +113,7 @@ function History() {
       return valueA - valueB
     })
     return list
-  }, [sessions, sortField, sortOrder])
+  }, [filteredSessions, sortField, sortOrder])
 
   const toggleSortOrder = () => {
     setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'))
@@ -158,6 +175,18 @@ function History() {
             </button>
           </div>
         </div>
+
+        <div className="control-group search-control">
+          <label htmlFor="sessionSearch">Search</label>
+          <input
+            id="sessionSearch"
+            type="text"
+            className="history-search-input"
+            placeholder="Search titles or URLs..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
       </div>
 
       {loading ? (
@@ -166,7 +195,7 @@ function History() {
         <div className="error">{error}</div>
       ) : sessions.length === 0 ? (
         <div className="card">
-          <p style={{ textAlign: 'center', color: '#999', padding: '40px' }}>
+          <p style={{ textAlign: 'center', color: 'var(--muted-text)', padding: '40px' }}>
             No browsing sessions recorded yet
           </p>
         </div>

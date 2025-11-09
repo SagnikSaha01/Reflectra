@@ -47,7 +47,7 @@ function Reflection() {
   return (
     <div className="reflection-page">
       <div className="reflection-header">
-        <Sparkles size={32} color="#667eea" />
+        <Sparkles size={32} color="var(--accent-secondary)" />
         <h1>Reflect on Your Digital Life</h1>
         <p>Ask questions about your browsing behavior and get personalized insights</p>
       </div>
@@ -74,7 +74,7 @@ function Reflection() {
         </form>
 
         <div className="suggested-queries">
-          <p style={{ fontSize: '14px', color: '#666', marginBottom: '12px' }}>
+          <p style={{ fontSize: '14px', color: 'var(--muted-text)', marginBottom: '12px' }}>
             Suggested questions:
           </p>
           <div className="query-chips">
@@ -97,7 +97,7 @@ function Reflection() {
       {response && (
         <div className="card response-card">
           <div className="response-header">
-            <Sparkles size={20} color="#667eea" />
+            <Sparkles size={20} color="var(--accent-secondary)" />
             <h3>Reflection</h3>
           </div>
           <div className="response-content">
