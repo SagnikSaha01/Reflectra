@@ -17,6 +17,16 @@ let isProcessingTransition = false;
 let periodicSaveInterval = null;
 const SAVE_INTERVAL = 30000; // Save every 30 seconds if session is active
 
+// Wellness notifications
+const BREAK_REMINDER_INTERVAL = 1 * 60 * 1000; // 30 minutes
+let breakReminderTimeout = null;
+let lastBreakNotification = null;
+
+// For demo: Sleep reminder will trigger immediately on first session
+// In production: Only shows between 1am-7am
+const DEMO_MODE = true; // Set to false in production
+let sleepReminderShown = false;
+
 // Track active tab changes
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   try {
@@ -122,6 +132,16 @@ async function startNewSession(tabId) {
 
     // Start periodic saving for long sessions
     startPeriodicSave();
+
+    // Start break reminder timer (30 min on same tab)
+    scheduleBreakReminder();
+
+    // Check if it's late night and show sleep reminder (DEMO: shows immediately for testing)
+    try {
+      await checkAndShowSleepReminder();
+    } catch (err) {
+      console.error('❌ Error in checkAndShowSleepReminder:', err);
+    }
   } catch (error) {
     console.error('Error starting session:', error);
   }
@@ -183,6 +203,9 @@ async function endCurrentSession() {
     clearInterval(periodicSaveInterval);
     periodicSaveInterval = null;
   }
+
+  // Clear break reminder
+  clearBreakReminder();
 
   const now = Date.now();
   const sessionTitle = currentSession.title || currentSession.url;
@@ -293,5 +316,164 @@ self.addEventListener('beforeunload', async () => {
   console.log('Browser closing - saving current session');
   await endCurrentSession();
 });
+
+// ========== WELLNESS NOTIFICATIONS ==========
+
+// Schedule a break reminder after 30 minutes on same tab
+function scheduleBreakReminder() {
+  // Clear any existing timeout
+  if (breakReminderTimeout) {
+    clearTimeout(breakReminderTimeout);
+  }
+
+  // Set new timeout for 30 minutes
+  breakReminderTimeout = setTimeout(() => {
+    showBreakReminder();
+  }, BREAK_REMINDER_INTERVAL);
+
+  console.log('⏰ Break reminder scheduled for 30 minutes');
+}
+
+// Show break reminder notification
+async function showBreakReminder() {
+  const now = Date.now();
+
+  // Don't show if we showed one in the last 15 minutes
+  if (lastBreakNotification && (now - lastBreakNotification < 15 * 60 * 1000)) {
+    console.log('Skipping break reminder - too soon since last one');
+    return;
+  }
+
+  const messages = [
+    {
+      title: "Time for a Break! 🌟",
+      message: "You've been on this tab for 30 minutes. How about stretching, hydrating, or taking a quick walk?"
+    },
+    {
+      title: "Break Reminder 💆",
+      message: "30 minutes of focus! Consider giving your eyes a rest with the 20-20-20 rule: Look 20 feet away for 20 seconds."
+    },
+    {
+      title: "Wellness Check ✨",
+      message: "Time flies! You've been here for 30 minutes. A short break can boost your productivity."
+    },
+    {
+      title: "Stretch Time! 🧘",
+      message: "30 minutes passed! Stand up, stretch, and give your mind a quick refresh."
+    }
+  ];
+
+  // Pick a random message
+  const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+
+  try {
+    const notificationId = await chrome.notifications.create({
+      type: 'basic',
+      iconUrl: 'icons/icon128.png',
+      title: randomMessage.title,
+      message: randomMessage.message,
+      priority: 1
+    });
+
+    lastBreakNotification = now;
+    console.log('📢 Showed break reminder notification with ID:', notificationId);
+    console.log('   Title:', randomMessage.title);
+    console.log('   Message:', randomMessage.message);
+
+    // Schedule next reminder if still on same tab
+    scheduleBreakReminder();
+  } catch (error) {
+    console.error('❌ Error showing break notification:', error);
+    console.error('   Error details:', error.message);
+  }
+}
+
+// Check if it's late night (1am-7am) and show sleep reminder
+async function checkAndShowSleepReminder() {
+  console.log('🌙 Checking sleep reminder - DEMO_MODE:', DEMO_MODE, 'sleepReminderShown:', sleepReminderShown);
+
+  // DEMO MODE: Show immediately for testing purposes
+  if (DEMO_MODE && !sleepReminderShown) {
+    console.log('🌙 DEMO MODE: Showing sleep reminder now');
+    await showSleepReminder();
+    sleepReminderShown = true;
+    return;
+  }
+
+  // PRODUCTION MODE: Only show during late night hours (1am-7am)
+  if (!DEMO_MODE) {
+    const currentHour = new Date().getHours();
+    const isLateNight = currentHour >= 1 && currentHour < 7;
+
+    if (isLateNight && !sleepReminderShown) {
+      await showSleepReminder();
+      sleepReminderShown = true;
+
+      // Reset flag at 7am
+      const now = new Date();
+      const resetTime = new Date(now);
+      resetTime.setHours(7, 0, 0, 0);
+
+      // If current time is past 7am, set for tomorrow
+      if (now > resetTime) {
+        resetTime.setDate(resetTime.getDate() + 1);
+      }
+
+      const timeUntilReset = resetTime - now;
+      setTimeout(() => {
+        sleepReminderShown = false;
+      }, timeUntilReset);
+    }
+  }
+}
+
+// Show sleep reminder notification
+async function showSleepReminder() {
+  const currentHour = new Date().getHours();
+  const demoMessage = DEMO_MODE ? " [DEMO MODE - Would normally show at 1am-7am]" : "";
+
+  const messages = [
+    {
+      title: "😴 Consider Getting Some Rest",
+      message: `It's ${currentHour >= 1 && currentHour < 12 ? 'late night' : 'early morning'}. Your body and mind need quality sleep for optimal wellness.${demoMessage}`
+    },
+    {
+      title: "💤 Time to Sleep?",
+      message: `Late night browsing detected. Good sleep is essential for your health and productivity.${demoMessage}`
+    },
+    {
+      title: "🌙 Sleep Reminder",
+      message: `It's late! Consider winding down for better sleep quality and morning energy.${demoMessage}`
+    }
+  ];
+
+  const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+
+  try {
+    const notificationId = await chrome.notifications.create({
+      type: 'basic',
+      iconUrl: 'icons/icon128.png',
+      title: randomMessage.title,
+      message: randomMessage.message,
+      priority: 2,
+      requireInteraction: true // Makes it stay until dismissed
+    });
+
+    console.log('📢 Showed sleep reminder notification with ID:', notificationId);
+    console.log('   Title:', randomMessage.title);
+    console.log('   Message:', randomMessage.message);
+  } catch (error) {
+    console.error('❌ Error showing sleep notification:', error);
+    console.error('   Error details:', error.message);
+  }
+}
+
+// Clear break reminder when session ends
+function clearBreakReminder() {
+  if (breakReminderTimeout) {
+    clearTimeout(breakReminderTimeout);
+    breakReminderTimeout = null;
+  }
+}
 
 console.log('Reflectra background service worker initialized');
