@@ -1,12 +1,14 @@
 import { useState, useEffect, useMemo } from 'react'
 import axios from 'axios'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts'
-import { Clock, Activity, TrendingUp } from 'lucide-react'
+import { Clock, Activity, TrendingUp, Lightbulb, Sparkles } from 'lucide-react'
 import { mergeDuplicateSessions } from '../utils/sessionUtils'
 
 function Dashboard() {
   const [stats, setStats] = useState(null)
   const [sessions, setSessions] = useState([])
+  const [insights, setInsights] = useState(null)
+  const [loadingInsights, setLoadingInsights] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -29,9 +31,28 @@ function Dashboard() {
       setStats(statsResponse.data)
       setSessions(sessionsResponse.data)
       setLoading(false)
+
+      // Fetch insights separately (don't block main UI)
+      fetchInsights()
     } catch (err) {
       setError('Failed to load statistics')
       setLoading(false)
+    }
+  }
+
+  const fetchInsights = async () => {
+    setLoadingInsights(true)
+    try {
+      const response = await axios.get('/api/stats/insights')
+      setInsights(response.data)
+    } catch (err) {
+      console.error('Failed to load insights:', err)
+      setInsights({
+        insights: "Unable to generate insights at this time.",
+        suggestions: []
+      })
+    } finally {
+      setLoadingInsights(false)
     }
   }
 
@@ -140,6 +161,84 @@ function Dashboard() {
             })}
           </div>
         </div>
+      </div>
+
+      {/* AI Insights Section */}
+      <div className="card" style={{ marginTop: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+          <Sparkles size={24} color="#FFD700" />
+          <h2 className="card-title" style={{ margin: 0 }}>Daily Insights</h2>
+        </div>
+
+        {loadingInsights ? (
+          <div style={{ padding: '32px', textAlign: 'center', color: 'var(--muted-text)' }}>
+            <div style={{ marginBottom: '12px' }}>Analyzing your activity...</div>
+            <div style={{ fontSize: '14px', opacity: 0.7 }}>Generating personalized insights with AI</div>
+          </div>
+        ) : insights ? (
+          <div>
+            <div style={{
+              padding: '20px',
+              backgroundColor: 'rgba(255, 215, 0, 0.05)',
+              borderRadius: '12px',
+              borderLeft: '4px solid #FFD700',
+              marginBottom: '20px'
+            }}>
+              <p style={{
+                fontSize: '16px',
+                lineHeight: '1.6',
+                margin: 0,
+                color: 'var(--text-color)'
+              }}>
+                {insights.insights}
+              </p>
+            </div>
+
+            {insights.suggestions && insights.suggestions.length > 0 && (
+              <div>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '12px',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  color: 'var(--text-color)'
+                }}>
+                  <Lightbulb size={18} color="#4CAF50" />
+                  <span>Suggestions for You</span>
+                </div>
+                <ul style={{
+                  listStyle: 'none',
+                  padding: 0,
+                  margin: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}>
+                  {insights.suggestions.map((suggestion, index) => (
+                    <li key={index} style={{
+                      padding: '12px 16px',
+                      backgroundColor: 'rgba(76, 175, 80, 0.05)',
+                      borderRadius: '8px',
+                      borderLeft: '3px solid #4CAF50',
+                      fontSize: '14px',
+                      lineHeight: '1.5',
+                      color: 'var(--text-color)'
+                    }}>
+                      {suggestion}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ padding: '32px', textAlign: 'center', color: 'var(--muted-text)' }}>
+            <Lightbulb size={32} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
+            <p>Start browsing to get personalized insights!</p>
+          </div>
+        )}
       </div>
     </div>
   )
