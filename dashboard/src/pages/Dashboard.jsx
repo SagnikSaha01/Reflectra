@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import axios from 'axios'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts'
-import { Clock, Activity, TrendingUp, Lightbulb, Sparkles } from 'lucide-react'
+import { Clock, Activity, TrendingUp, Lightbulb, Sparkles, RefreshCw } from 'lucide-react'
 import { mergeDuplicateSessions } from '../utils/sessionUtils'
 
 function Dashboard() {
@@ -40,10 +40,11 @@ function Dashboard() {
     }
   }
 
-  const fetchInsights = async () => {
+  const fetchInsights = async (forceRefresh = false) => {
     setLoadingInsights(true)
     try {
-      const response = await axios.get('/api/stats/insights')
+      const url = forceRefresh ? '/api/stats/insights?refresh=true' : '/api/stats/insights'
+      const response = await axios.get(url)
       setInsights(response.data)
     } catch (err) {
       console.error('Failed to load insights:', err)
@@ -54,6 +55,10 @@ function Dashboard() {
     } finally {
       setLoadingInsights(false)
     }
+  }
+
+  const handleRefreshInsights = () => {
+    fetchInsights(true)
   }
 
   // Calculate merged session count
@@ -165,9 +170,51 @@ function Dashboard() {
 
       {/* AI Insights Section */}
       <div className="card" style={{ marginTop: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-          <Sparkles size={24} color="#FFD700" />
-          <h2 className="card-title" style={{ margin: 0 }}>Daily Insights</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Sparkles size={24} color="#FFD700" />
+            <h2 className="card-title" style={{ margin: 0 }}>Daily Insights</h2>
+            {insights?.cached && (
+              <span style={{
+                fontSize: '12px',
+                color: 'var(--muted-text)',
+                backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                padding: '4px 8px',
+                borderRadius: '4px'
+              }}>
+                Cached
+              </span>
+            )}
+          </div>
+          {insights && !loadingInsights && (
+            <button
+              onClick={handleRefreshInsights}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 12px',
+                backgroundColor: 'transparent',
+                border: '1px solid var(--border-color)',
+                borderRadius: '8px',
+                color: 'var(--text-color)',
+                cursor: 'pointer',
+                fontSize: '14px',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)'
+                e.currentTarget.style.borderColor = '#FFD700'
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent'
+                e.currentTarget.style.borderColor = 'var(--border-color)'
+              }}
+            >
+              <RefreshCw size={16} />
+              <span>Refresh</span>
+            </button>
+          )}
         </div>
 
         {loadingInsights ? (

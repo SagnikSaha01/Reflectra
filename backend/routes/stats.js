@@ -215,8 +215,30 @@ router.get('/insights', async (req, res) => {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const todayTimestamp = todayStart.getTime();
+  const forceRefresh = req.query.refresh === 'true';
 
   try {
+    // Check for cached insights from today (unless force refresh)
+    if (!forceRefresh) {
+      const todayDate = todayStart.toISOString().split('T')[0];
+      const { data: cachedInsight, error: cacheError } = await supabase
+        .from('daily_insights')
+        .select('*')
+        .eq('date', todayDate)
+        .single();
+
+      if (!cacheError && cachedInsight) {
+        console.log('Returning cached insights for', todayDate);
+        return res.json({
+          insights: cachedInsight.insight_text,
+          suggestions: cachedInsight.suggestions,
+          metadata: cachedInsight.metadata,
+          cached: true,
+          generatedAt: cachedInsight.generated_at
+        });
+      }
+    }
+
     // Get today's sessions with category info
     const { data: sessions, error: sessionError } = await supabase
       .from('sessions')
@@ -336,14 +358,36 @@ Format your response as JSON:
 
     const aiResponse = JSON.parse(completion.choices[0].message.content);
 
+    const metadata = {
+      totalTime: formatTime(totalTime),
+      sessionCount: sessions.length,
+      topCategory: categories[0]?.name
+    };
+
+    // Cache the insights for today
+    const todayDate = todayStart.toISOString().split('T')[0];
+    const { error: cacheInsertError } = await supabase
+      .from('daily_insights')
+      .upsert({
+        date: todayDate,
+        insight_text: aiResponse.insight,
+        suggestions: aiResponse.suggestions || [],
+        metadata: metadata,
+        generated_at: new Date().toISOString()
+      }, {
+        onConflict: 'date'
+      });
+
+    if (cacheInsertError) {
+      console.error('Failed to cache insights:', cacheInsertError);
+    }
+
     res.json({
       insights: aiResponse.insight,
       suggestions: aiResponse.suggestions || [],
-      metadata: {
-        totalTime: formatTime(totalTime),
-        sessionCount: sessions.length,
-        topCategory: categories[0]?.name
-      }
+      metadata: metadata,
+      cached: false,
+      generatedAt: new Date().toISOString()
     });
 
   } catch (error) {
