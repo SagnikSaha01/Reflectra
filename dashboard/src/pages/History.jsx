@@ -62,9 +62,25 @@ function History() {
   }
 
 
-  const sortedSessions = useMemo(() => {
-    // First merge duplicates
+  const filteredSessions = useMemo(() => {
     const mergedList = mergeDuplicateSessions(sessions)
+
+    if (!searchTerm.trim()) {
+      return mergedList
+    }
+
+    const term = searchTerm.toLowerCase()
+
+    return mergedList.filter(session => {
+      const title = session.title?.toLowerCase() || ''
+      const url = session.url?.toLowerCase() || ''
+      const domain = (getDomainUtil(session.url) || '').toLowerCase()
+      return title.includes(term) || url.includes(term) || domain.includes(term)
+    })
+  }, [sessions, searchTerm])
+
+  const sortedSessions = useMemo(() => {
+    const list = [...filteredSessions]
 
     const getValue = (session) => {
       if (sortField === 'recency') {
@@ -73,7 +89,7 @@ function History() {
       return session.duration || 0
     }
 
-    mergedList.sort((a, b) => {
+    list.sort((a, b) => {
       const valueA = getValue(a)
       const valueB = getValue(b)
 
@@ -82,8 +98,8 @@ function History() {
       }
       return valueA - valueB
     })
-    return mergedList
-  }, [sessions, sortField, sortOrder])
+    return list
+  }, [filteredSessions, sortField, sortOrder])
 
   const toggleSortOrder = () => {
     setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'))
@@ -163,46 +179,48 @@ function History() {
         <div className="loading">Loading session history...</div>
       ) : error ? (
         <div className="error">{error}</div>
-      ) : sessions.length === 0 ? (
-        <div className="card">
-          <p style={{ textAlign: 'center', color: 'var(--muted-text)', padding: '40px' }}>
-            No browsing sessions recorded yet
-          </p>
-        </div>
       ) : (
         <div className="card">
-          <div className="session-list">
-            {sortedSessions.map(session => (
-              <div key={session.id} className="session-item">
-                <div className="session-header">
-                  <div className="session-title">
-                    {session.title || getDomainUtil(session.url)}
+          {sortedSessions.length === 0 ? (
+            <p style={{ textAlign: 'center', color: 'var(--muted-text)', padding: '40px' }}>
+              {sessions.length === 0
+                ? 'No browsing sessions recorded yet'
+                : 'No sessions match your search'}
+            </p>
+          ) : (
+            <div className="session-list">
+              {sortedSessions.map(session => (
+                <div key={session.id} className="session-item">
+                  <div className="session-header">
+                    <div className="session-title">
+                      {session.title || getDomainUtil(session.url)}
+                    </div>
+                    {session.category_name && (
+                      <span
+                        className="session-category"
+                        style={{ backgroundColor: session.category_color + '20', color: session.category_color }}
+                      >
+                        {session.category_name}
+                      </span>
+                    )}
                   </div>
-                  {session.category_name && (
-                    <span
-                      className="session-category"
-                      style={{ backgroundColor: session.category_color + '20', color: session.category_color }}
-                    >
-                      {session.category_name}
-                    </span>
-                  )}
-                </div>
 
-                <div className="session-url">{getDomainUtil(session.url)}</div>
+                  <div className="session-url">{getDomainUtil(session.url)}</div>
 
-                <div className="session-meta">
-                  <div className="meta-item">
-                    <Calendar size={14} />
-                    <span>{formatDate(session.timestamp)}</span>
-                  </div>
-                  <div className="meta-item">
-                    <Clock size={14} />
-                    <span>{formatTimeUtil(session.duration)}</span>
+                  <div className="session-meta">
+                    <div className="meta-item">
+                      <Calendar size={14} />
+                      <span>{formatDate(session.timestamp)}</span>
+                    </div>
+                    <div className="meta-item">
+                      <Clock size={14} />
+                      <span>{formatTimeUtil(session.duration)}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
