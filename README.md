@@ -1,4 +1,4 @@
-<img width="2498" height="700" alt="image" src="https://github.com/user-attachments/assets/ee54b8b3-d174-494a-9640-f0589148dd81" />
+<img width="1025" height="268" alt="image" src="https://github.com/user-attachments/assets/d726efe8-212b-4bf6-9e4c-1cfe08f18961" />
 
 # Reflectra - Digital Wellness Tracker
 
