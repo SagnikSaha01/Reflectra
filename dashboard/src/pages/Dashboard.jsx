@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts'
-import { Clock, Activity, TrendingUp, Lightbulb, Sparkles, RefreshCw } from 'lucide-react'
+import { Clock, Activity, TrendingUp, Lightbulb, Sparkles, RefreshCw, HelpCircle } from 'lucide-react'
+
+const InfoTooltip = ({ text }) => (
+  <span className="tooltip-trigger" tabIndex={0} aria-label={text}>
+    <HelpCircle size={16} aria-hidden="true" />
+    <span className="tooltip-content">{text}</span>
+  </span>
+)
 
 function Dashboard() {
   const [stats, setStats] = useState(null)
@@ -79,7 +86,10 @@ function Dashboard() {
 
       <div className="grid grid-3">
         <div className="wellness-score-card">
-          <div className="wellness-score-label">Wellness Score</div>
+          <div className="wellness-score-label with-tooltip">
+            <span>Wellness Score</span>
+            <InfoTooltip text="Tracks how well you balanced productivity with rest, avoided mindless scrolling, and kept screens away late at night." />
+          </div>
           <div className="wellness-score-value">
             {stats.wellnessScore !== null ? stats.wellnessScore : '--'}
           </div>
@@ -97,7 +107,10 @@ function Dashboard() {
         <div className="stat-card">
           <Activity size={32} color="var(--accent-secondary)" style={{ margin: '0 auto' }} />
           <div className="stat-value" style={{ color: 'var(--accent-secondary)' }}>{stats.sessionCount ?? '--'}</div>
-          <div className="stat-label">Sessions</div>
+          <div className="stat-label with-tooltip">
+            <span>Sessions</span>
+            <InfoTooltip text="Counts uninterrupted stretches where you focused on one kind of activity without distractions." />
+          </div>
         </div>
       </div>
 
