@@ -11,40 +11,29 @@ router.get('/today', async (req, res) => {
   const todayTimestamp = todayStart.getTime();
 
   try {
-    // Get session count and total time
     const { data: sessions, error: sessionError } = await supabase
-      .from('sessions')
-      .select('duration')
-      .gte('timestamp', todayTimestamp);
-
-    if (sessionError) {
-      return res.status(500).json({ error: sessionError.message });
-    }
-
-    const summary = {
-      sessionCount: sessions.length,
-      totalTime: sessions.reduce((sum, s) => sum + s.duration, 0)
-    };
-
-    // Get time by category
-    const { data: categoryStats, error: categoryError } = await supabase
       .from('sessions')
       .select(`
         duration,
+        timestamp,
         categories:category_id (
           name,
           color
         )
       `)
-      .gte('timestamp', todayTimestamp);
+      .gte('timestamp', todayTimestamp)
+      .order('timestamp', { ascending: true });
 
-    if (categoryError) {
-      return res.status(500).json({ error: categoryError.message });
+    if (sessionError) {
+      return res.status(500).json({ error: sessionError.message });
     }
+
+    const totalTime = sessions?.reduce((sum, s) => sum + (s.duration || 0), 0) || 0;
+    const sessionCount = calculateCategorySessions(sessions || []);
 
     // Aggregate by category
     const categoryMap = {};
-    categoryStats.forEach(session => {
+    (sessions || []).forEach(session => {
       const categoryName = session.categories?.name || 'Uncategorized';
       const categoryColor = session.categories?.color || '#9E9E9E';
 
@@ -57,7 +46,7 @@ router.get('/today', async (req, res) => {
         };
       }
 
-      categoryMap[categoryName].time += session.duration;
+      categoryMap[categoryName].time += session.duration || 0;
       categoryMap[categoryName].count += 1;
     });
 
@@ -67,9 +56,9 @@ router.get('/today', async (req, res) => {
     const wellnessScore = wellnessService.calculateDailyScore(categories);
 
     res.json({
-      sessionCount: summary.sessionCount || 0,
-      totalTime: summary.totalTime || 0,
-      categories: categories,
+      sessionCount,
+      totalTime,
+      categories,
       wellnessScore: wellnessScore
     });
   } catch (error) {
@@ -407,3 +396,23 @@ Format your response as JSON:
 });
 
 module.exports = router;
+
+function calculateCategorySessions(sessions) {
+  if (!sessions || sessions.length === 0) {
+    return 0;
+  }
+
+  let sessionCount = 0;
+  let previousCategory = null;
+
+  sessions.forEach(session => {
+    const currentCategory = session.categories?.name || 'Uncategorized';
+
+    if (previousCategory === null || currentCategory !== previousCategory) {
+      sessionCount += 1;
+      previousCategory = currentCategory;
+    }
+  });
+
+  return sessionCount;
+}
