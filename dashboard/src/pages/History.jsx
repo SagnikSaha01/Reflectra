@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import axios from 'axios'
 import { Calendar, Clock, ArrowDownUp } from 'lucide-react'
+import { mergeDuplicateSessions, formatTime as formatTimeUtil, getDomain as getDomainUtil } from '../utils/sessionUtils'
 import './History.css'
 
 function History() {
@@ -48,16 +49,6 @@ function History() {
     }
   }
 
-  const formatTime = (ms) => {
-    const minutes = Math.floor(ms / 60000)
-    const seconds = Math.floor((ms % 60000) / 1000)
-
-    if (minutes > 0) {
-      return `${minutes}m ${seconds}s`
-    }
-    return `${seconds}s`
-  }
-
   const formatDate = (timestamp) => {
     const date = new Date(timestamp)
     const today = new Date()
@@ -70,32 +61,11 @@ function History() {
     return date.toLocaleDateString() + ', ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
-  const getDomain = (url) => {
-    try {
-      return new URL(url).hostname
-    } catch {
-      return url
-    }
-  }
-
-  const filteredSessions = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return sessions
-    }
-
-    const term = searchTerm.toLowerCase()
-
-    return sessions.filter(session => {
-      const title = session.title?.toLowerCase() || ''
-      const url = session.url?.toLowerCase() || ''
-      const domain = (getDomain(session.url) || '').toLowerCase()
-
-      return title.includes(term) || url.includes(term) || domain.includes(term)
-    })
-  }, [sessions, searchTerm])
 
   const sortedSessions = useMemo(() => {
-    const list = [...filteredSessions]
+    // First merge duplicates
+    const mergedList = mergeDuplicateSessions(sessions)
+
     const getValue = (session) => {
       if (sortField === 'recency') {
         return session.timestamp || 0
@@ -103,7 +73,7 @@ function History() {
       return session.duration || 0
     }
 
-    list.sort((a, b) => {
+    mergedList.sort((a, b) => {
       const valueA = getValue(a)
       const valueB = getValue(b)
 
@@ -112,8 +82,8 @@ function History() {
       }
       return valueA - valueB
     })
-    return list
-  }, [filteredSessions, sortField, sortOrder])
+    return mergedList
+  }, [sessions, sortField, sortOrder])
 
   const toggleSortOrder = () => {
     setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'))
@@ -206,7 +176,7 @@ function History() {
               <div key={session.id} className="session-item">
                 <div className="session-header">
                   <div className="session-title">
-                    {session.title || getDomain(session.url)}
+                    {session.title || getDomainUtil(session.url)}
                   </div>
                   {session.category_name && (
                     <span
@@ -218,7 +188,7 @@ function History() {
                   )}
                 </div>
 
-                <div className="session-url">{getDomain(session.url)}</div>
+                <div className="session-url">{getDomainUtil(session.url)}</div>
 
                 <div className="session-meta">
                   <div className="meta-item">
@@ -227,7 +197,7 @@ function History() {
                   </div>
                   <div className="meta-item">
                     <Clock size={14} />
-                    <span>{formatTime(session.duration)}</span>
+                    <span>{formatTimeUtil(session.duration)}</span>
                   </div>
                 </div>
               </div>

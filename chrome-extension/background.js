@@ -10,25 +10,46 @@ let currentSession = {
   tabId: null
 };
 
+// Prevent concurrent session transitions
+let isProcessingTransition = false;
+
+// Periodic session saving to prevent data loss
+let periodicSaveInterval = null;
+const SAVE_INTERVAL = 30000; // Save every 30 seconds if session is active
+
 // Track active tab changes
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   try {
-    const tab = await chrome.tabs.get(activeInfo.tabId);
+    // End current session immediately (no debounce for better accuracy)
+    if (isProcessingTransition) return;
+    isProcessingTransition = true;
 
-    // If switching to chrome://, extension, or localhost pages, don't end the session
-    // The user is likely just opening settings, the extension popup, or local dev environment
-    if (tab.url.startsWith('chrome://') ||
-        tab.url.startsWith('chrome-extension://') ||
-        tab.url.includes('localhost') ||
-        tab.url.includes('127.0.0.1')) {
-      console.log('Ignoring switch to internal/localhost page:', tab.url);
-      return;
+    try {
+      // End the old session right away
+      await endCurrentSession();
+
+      // Small delay before starting new session to let tab load
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      const tab = await chrome.tabs.get(activeInfo.tabId);
+
+      // If switching to chrome://, extension, or localhost pages, don't start a new session
+      if (tab.url.startsWith('chrome://') ||
+          tab.url.startsWith('chrome-extension://') ||
+          tab.url.includes('localhost') ||
+          tab.url.includes('127.0.0.1')) {
+        console.log('Ignoring switch to internal/localhost page:', tab.url);
+        isProcessingTransition = false;
+        return;
+      }
+
+      await startNewSession(activeInfo.tabId);
+    } finally {
+      isProcessingTransition = false;
     }
-
-    await endCurrentSession();
-    await startNewSession(activeInfo.tabId);
   } catch (error) {
     console.error('Error handling tab activation:', error);
+    isProcessingTransition = false;
   }
 });
 
@@ -40,25 +61,39 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     const oldUrl = currentSession.url;
     const newUrl = changeInfo.url;
 
-    // If URL changed to a different page, restart the session
+    // If URL changed to a different page, restart the session immediately
     if (oldUrl !== newUrl) {
-      await endCurrentSession();
-      await startNewSession(tabId);
+      if (isProcessingTransition) return;
+      isProcessingTransition = true;
+
+      try {
+        await endCurrentSession();
+        await startNewSession(tabId);
+      } finally {
+        isProcessingTransition = false;
+      }
     }
   }
 });
 
 // Track window focus changes
 chrome.windows.onFocusChanged.addListener(async (windowId) => {
-  if (windowId === chrome.windows.WINDOW_ID_NONE) {
-    // User switched away from browser
-    await endCurrentSession();
-  } else {
-    // User returned to browser
-    const [activeTab] = await chrome.tabs.query({ active: true, windowId });
-    if (activeTab) {
-      await startNewSession(activeTab.id);
+  if (isProcessingTransition) return;
+  isProcessingTransition = true;
+
+  try {
+    if (windowId === chrome.windows.WINDOW_ID_NONE) {
+      // User switched away from browser - save immediately
+      await endCurrentSession();
+    } else {
+      // User returned to browser - start tracking immediately
+      const [activeTab] = await chrome.tabs.query({ active: true, windowId });
+      if (activeTab) {
+        await startNewSession(activeTab.id);
+      }
     }
+  } finally {
+    isProcessingTransition = false;
   }
 });
 
@@ -79,13 +114,62 @@ async function startNewSession(tabId) {
       url: tab.url,
       title: tab.title,
       startTime: Date.now(),
-      tabId: tabId
+      tabId: tabId,
+      lastSaveTime: null // Track when we last saved this session
     };
 
     console.log('Started session:', currentSession);
+
+    // Start periodic saving for long sessions
+    startPeriodicSave();
   } catch (error) {
     console.error('Error starting session:', error);
   }
+}
+
+function startPeriodicSave() {
+  // Clear any existing interval
+  if (periodicSaveInterval) {
+    clearInterval(periodicSaveInterval);
+  }
+
+  // Save session progress every 30 seconds
+  periodicSaveInterval = setInterval(async () => {
+    if (currentSession.startTime) {
+      await saveSessionProgress();
+    }
+  }, SAVE_INTERVAL);
+}
+
+async function saveSessionProgress() {
+  if (!currentSession.startTime) return;
+
+  const now = Date.now();
+  const totalDuration = now - currentSession.startTime;
+
+  // Only save if session is longer than 3 seconds
+  if (totalDuration < 3000) return;
+
+  // Calculate duration since last save
+  const durationToSave = currentSession.lastSaveTime
+    ? now - currentSession.lastSaveTime
+    : totalDuration;
+
+  const sessionData = {
+    url: currentSession.url,
+    title: currentSession.title,
+    duration: durationToSave,
+    timestamp: currentSession.lastSaveTime || currentSession.startTime
+  };
+
+  // Update last save time
+  currentSession.lastSaveTime = now;
+
+  console.log(`💾 Saving progress: "${sessionData.title}" - ${Math.round(durationToSave / 1000)}s`);
+
+  // Save locally and to backend
+  await saveSessionLocally(sessionData);
+  await sendToBackend(sessionData);
 }
 
 async function endCurrentSession() {
@@ -94,37 +178,45 @@ async function endCurrentSession() {
     return;
   }
 
-  const duration = Date.now() - currentSession.startTime;
-  const sessionTitle = currentSession.title || currentSession.url;
-
-  // Only track sessions longer than 3 seconds
-  if (duration < 3000) {
-    console.log(`Session too short (${Math.round(duration / 1000)}s), not saving:`, sessionTitle);
-    currentSession = { url: null, title: null, startTime: null, tabId: null };
-    return;
+  // Stop periodic saving
+  if (periodicSaveInterval) {
+    clearInterval(periodicSaveInterval);
+    periodicSaveInterval = null;
   }
 
-  const sessionData = {
-    url: currentSession.url,
-    title: currentSession.title,
-    duration: duration,
-    timestamp: currentSession.startTime
-  };
+  const now = Date.now();
+  const sessionTitle = currentSession.title || currentSession.url;
 
-  // Reset current session BEFORE saving to prevent double-saves
-  currentSession = { url: null, title: null, startTime: null, tabId: null };
+  // Calculate remaining duration since last save
+  const durationSinceLastSave = currentSession.lastSaveTime
+    ? now - currentSession.lastSaveTime
+    : now - currentSession.startTime;
 
-  // Log the session being saved with human-readable time and caller info
-  const minutes = Math.floor(duration / 60000);
-  const seconds = Math.floor((duration % 60000) / 1000);
-  console.log(`✓ SAVING SESSION: "${sessionData.title}" - Duration: ${minutes}m ${seconds}s (${duration}ms)`);
-  console.trace('Called from:'); // Shows stack trace to identify caller
+  // Only save if there's remaining time to record (at least 3 seconds)
+  if (durationSinceLastSave >= 3000) {
+    const sessionData = {
+      url: currentSession.url,
+      title: currentSession.title,
+      duration: durationSinceLastSave,
+      timestamp: currentSession.lastSaveTime || currentSession.startTime
+    };
 
-  // Save to local storage
-  await saveSessionLocally(sessionData);
+    // Log the final chunk being saved
+    const minutes = Math.floor(durationSinceLastSave / 60000);
+    const seconds = Math.floor((durationSinceLastSave % 60000) / 1000);
+    console.log(`✓ SAVING FINAL: "${sessionData.title}" - Duration: ${minutes}m ${seconds}s (${durationSinceLastSave}ms)`);
 
-  // Send to backend API
-  await sendToBackend(sessionData);
+    // Save to local storage
+    await saveSessionLocally(sessionData);
+
+    // Send to backend API
+    await sendToBackend(sessionData);
+  } else {
+    console.log(`Final chunk too short (${Math.round(durationSinceLastSave / 1000)}s), not saving:`, sessionTitle);
+  }
+
+  // Reset current session
+  currentSession = { url: null, title: null, startTime: null, tabId: null, lastSaveTime: null };
 }
 
 async function saveSessionLocally(sessionData) {
@@ -188,6 +280,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
   }
   return true; // Keep message channel open for async response
+});
+
+// Save session when browser closes or extension unloads
+chrome.runtime.onSuspend.addListener(async () => {
+  console.log('Extension suspending - saving current session');
+  await endCurrentSession();
+});
+
+// Handle browser shutdown - try to save current session
+self.addEventListener('beforeunload', async () => {
+  console.log('Browser closing - saving current session');
+  await endCurrentSession();
 });
 
 console.log('Reflectra background service worker initialized');

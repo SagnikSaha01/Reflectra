@@ -7,6 +7,12 @@ const openai = new OpenAI({
 
 // URL Pattern-based categorization for instant classification
 const URL_PATTERNS = {
+   'Mindless Scroll': [
+    /instagram\.com\/reels/i,
+    /youtube\.com\/shorts/i,          
+    /tiktok\.com/i,                  
+    /facebook\.com\/(watch|reels)/i 
+  ],
   'Focused Work': [
     /github\.com\/.*\/pull/i,
     /github\.com\/.*\/issues/i,
@@ -38,11 +44,15 @@ const URL_PATTERNS = {
     /duolingo\.com/i,
     /youtube\.com.*\/watch.*tutorial/i,
     /youtube\.com.*\/watch.*learn/i,
-    /youtube\.com.*\/watch.*course/i
+    /youtube\.com.*\/watch.*course/i,
+    /linkedin\.com\/learning/i, // <-- ADDED
+    /reddit\.com\/r\/learnprogramming/i, // <-- ADDED
+    /reddit\.com\/r\/askscience/i, // <-- ADDED
+    /reddit\.com\/r\/history/i // <-- ADDED
   ],
   'Research': [
     /stackoverflow\.com/i,
-    /github\.com(?!.*\/(pull|issues))/i,
+    /github\.com(?!.*\/(pull|issues))/i, // This pattern is great!
     /medium\.com/i,
     /dev\.to/i,
     /arxiv\.org/i,
@@ -61,18 +71,16 @@ const URL_PATTERNS = {
     /instagram\.com/i,
     /twitter\.com/i,
     /x\.com/i,
-    /linkedin\.com/i,
-    /reddit\.com/i,
+    /linkedin\.com/i, 
+    /reddit\.com/i,   
     /discord\.com/i,
-    /tiktok\.com/i,
-    /snapchat\.com/i,
     /whatsapp\.com/i,
     /telegram\.org/i,
     /pinterest\.com/i,
     /tumblr\.com/i
   ],
   'Relaxation': [
-    /youtube\.com\/watch/i,
+    /youtube\.com\/watch/i, // Will now correctly NOT match the 'Learning' videos
     /netflix\.com/i,
     /hulu\.com/i,
     /disneyplus\.com/i,
@@ -95,7 +103,8 @@ const URL_PATTERNS = {
     /meet\.google\.com/i,
     /webex\.com/i,
     /calendar\.google\.com/i
-  ]
+  ], 
+ 
 };
 
 function categorizeByUrlPattern(url) {

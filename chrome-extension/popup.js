@@ -5,6 +5,68 @@ const API_ENDPOINT = 'http://localhost:3000/api';
 // Live timer for current tab
 let timerInterval = null;
 
+// Session merging utilities (same as dashboard)
+function normalizeUrl(url) {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.origin + urlObj.pathname;
+  } catch {
+    return url;
+  }
+}
+
+function mergeDuplicateSessions(sessionsList, mergeWindow = 300000) {
+  if (!sessionsList || sessionsList.length === 0) return [];
+
+  const sorted = [...sessionsList].sort((a, b) => a.timestamp - b.timestamp);
+  const merged = [];
+  let currentGroup = [sorted[0]];
+
+  for (let i = 1; i < sorted.length; i++) {
+    const current = sorted[i];
+    const lastInGroup = currentGroup[currentGroup.length - 1];
+
+    const currentNormalizedUrl = normalizeUrl(current.url);
+    const lastNormalizedUrl = normalizeUrl(lastInGroup.url);
+
+    const isSameUrl = currentNormalizedUrl === lastNormalizedUrl;
+    const isSameTitle = current.title === lastInGroup.title;
+    const timeBetweenStarts = current.timestamp - lastInGroup.timestamp;
+    const isWithinWindow = timeBetweenStarts <= mergeWindow;
+
+    if (isSameUrl && isSameTitle && isWithinWindow) {
+      currentGroup.push(current);
+    } else {
+      if (currentGroup.length > 1) {
+        const mergedSession = {
+          ...currentGroup[0],
+          duration: currentGroup.reduce((sum, s) => sum + s.duration, 0),
+          id: currentGroup[0].id,
+          mergedCount: currentGroup.length
+        };
+        merged.push(mergedSession);
+      } else {
+        merged.push(currentGroup[0]);
+      }
+      currentGroup = [current];
+    }
+  }
+
+  if (currentGroup.length > 1) {
+    const mergedSession = {
+      ...currentGroup[0],
+      duration: currentGroup.reduce((sum, s) => sum + s.duration, 0),
+      id: currentGroup[0].id,
+      mergedCount: currentGroup.length
+    };
+    merged.push(mergedSession);
+  } else if (currentGroup.length > 0) {
+    merged.push(currentGroup[0]);
+  }
+
+  return merged;
+}
+
 async function updateCurrentTabTime() {
   try {
     // Get current session data from background script
@@ -50,11 +112,26 @@ window.addEventListener('unload', () => {
 
 async function loadTodayStats() {
   try {
-    const response = await fetch(`${API_ENDPOINT}/stats/today`);
-    const data = await response.json();
+    // Get today's timestamp
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayTimestamp = todayStart.getTime();
 
-    // Update UI
-    document.getElementById('sessionCount').textContent = data.sessionCount || 0;
+    // Fetch both stats and raw sessions
+    const [statsResponse, sessionsResponse] = await Promise.all([
+      fetch(`${API_ENDPOINT}/stats/today`),
+      fetch(`${API_ENDPOINT}/sessions?startDate=${todayTimestamp}&limit=1000`)
+    ]);
+
+    const data = await statsResponse.json();
+    const sessions = await sessionsResponse.json();
+
+    // Calculate merged session count
+    const mergedSessions = mergeDuplicateSessions(sessions);
+    const mergedSessionCount = mergedSessions.length;
+
+    // Update UI with merged session count
+    document.getElementById('sessionCount').textContent = mergedSessionCount || 0;
     document.getElementById('totalTime').textContent = formatTime(data.totalTime || 0);
     document.getElementById('wellnessScore').textContent = data.wellnessScore || '--';
 

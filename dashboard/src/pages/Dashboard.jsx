@@ -1,27 +1,46 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import axios from 'axios'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts'
 import { Clock, Activity, TrendingUp } from 'lucide-react'
+import { mergeDuplicateSessions } from '../utils/sessionUtils'
 
 function Dashboard() {
   const [stats, setStats] = useState(null)
+  const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    fetchTodayStats()
+    fetchTodayData()
   }, [])
 
-  const fetchTodayStats = async () => {
+  const fetchTodayData = async () => {
     try {
-      const response = await axios.get('/api/stats/today')
-      setStats(response.data)
+      // Fetch both stats and raw sessions
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      const todayTimestamp = todayStart.getTime()
+
+      const [statsResponse, sessionsResponse] = await Promise.all([
+        axios.get('/api/stats/today'),
+        axios.get(`/api/sessions?startDate=${todayTimestamp}&limit=1000`)
+      ])
+
+      setStats(statsResponse.data)
+      setSessions(sessionsResponse.data)
       setLoading(false)
     } catch (err) {
       setError('Failed to load statistics')
       setLoading(false)
     }
   }
+
+  // Calculate merged session count
+  const mergedSessionCount = useMemo(() => {
+    if (!sessions || sessions.length === 0) return 0
+    const merged = mergeDuplicateSessions(sessions)
+    return merged.length
+  }, [sessions])
 
   const formatTime = (ms) => {
     const minutes = Math.floor(ms / 60000)
@@ -70,7 +89,7 @@ function Dashboard() {
 
         <div className="stat-card">
           <Activity size={32} color="var(--accent-secondary)" style={{ margin: '0 auto' }} />
-          <div className="stat-value" style={{ color: 'var(--accent-secondary)' }}>{stats.sessionCount}</div>
+          <div className="stat-value" style={{ color: 'var(--accent-secondary)' }}>{mergedSessionCount}</div>
           <div className="stat-label">Sessions</div>
         </div>
       </div>
