@@ -70,6 +70,7 @@ async function loadTodayStats() {
           <div class="category-name">${cat.name}</div>
           <div class="category-time">${formatTime(cat.time)}</div>
         `;
+        categoryEl.style.borderLeft = `4px solid ${cat.color}`;
         categoriesDiv.appendChild(categoryEl);
       });
     } else {
