@@ -15,10 +15,13 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
   try {
     const tab = await chrome.tabs.get(activeInfo.tabId);
 
-    // If switching to a chrome:// or extension page, don't end the session
-    // The user is likely just opening settings or the extension popup
-    if (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
-      console.log('Ignoring switch to internal Chrome page:', tab.url);
+    // If switching to chrome://, extension, or localhost pages, don't end the session
+    // The user is likely just opening settings, the extension popup, or local dev environment
+    if (tab.url.startsWith('chrome://') ||
+        tab.url.startsWith('chrome-extension://') ||
+        tab.url.includes('localhost') ||
+        tab.url.includes('127.0.0.1')) {
+      console.log('Ignoring switch to internal/localhost page:', tab.url);
       return;
     }
 
@@ -63,8 +66,12 @@ async function startNewSession(tabId) {
   try {
     const tab = await chrome.tabs.get(tabId);
 
-    // Ignore chrome:// and extension pages
-    if (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
+    // Ignore chrome://, extension pages, and localhost
+    if (tab.url.startsWith('chrome://') ||
+        tab.url.startsWith('chrome-extension://') ||
+        tab.url.includes('localhost') ||
+        tab.url.includes('127.0.0.1')) {
+      console.log('Ignoring internal/localhost page:', tab.url);
       return;
     }
 
