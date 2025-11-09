@@ -76,13 +76,22 @@ No extra work is required in the dashboard or extension—the RAG layer is entir
 
 ---
 
-## 6. (Optional) Backfill Existing Sessions
+## 6. Backfill or Reset Your Pinecone Data
 
-Only new sessions automatically sync to Pinecone. If you want historical data in the vector index:
+Only new sessions automatically sync to Pinecone. If you need to refresh the vector index (for example, after seeding Supabase with demo data), use the helper script:
 
-1. Export existing sessions from Supabase (`sessions` table).
-2. Write a small Node script that loops over those rows and calls `vectorStore.upsertSessionEmbedding(session)`.
-3. Run the script once—after that point the background ingestion will keep Pinecone updated.
+```bash
+cd backend
+npm run reset-pinecone
+```
+
+What the script does:
+
+1. Deletes every vector inside the configured namespace so you start from a clean slate.
+2. Pulls all rows from the `sessions` table (including category names).
+3. Replays each session through the existing `vectorStore.upsertSessionEmbedding` helper so metadata stays consistent.
+
+Make sure your `.env` has valid Supabase, Pinecone, and OpenAI credentials before running the script.
 
 ---
 

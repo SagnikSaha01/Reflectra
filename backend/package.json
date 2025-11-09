@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "init-db": "node scripts/initDatabase.js"
+    "init-db": "node scripts/initDatabase.js",
+    "reset-pinecone": "node scripts/resetPinecone.js"
   },
   "dependencies": {
     "@pinecone-database/pinecone": "^6.1.3",
