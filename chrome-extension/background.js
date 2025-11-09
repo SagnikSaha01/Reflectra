@@ -18,8 +18,8 @@ let periodicSaveInterval = null;
 const SAVE_INTERVAL = 30000; // Save every 30 seconds if session is active
 
 // Wellness notifications
-const BREAK_REMINDER_INTERVAL = 1 * 60 * 1000; // 30 minutes
-let breakReminderTimeout = null;
+const BREAK_REMINDER_INTERVAL = 1 * 60 * 1000; // 1 minute for testing (change to 60 * 60 * 1000 for 1 hour in production)
+let globalBreakReminderTimeout = null;
 let lastBreakNotification = null;
 
 // For demo: Sleep reminder will trigger immediately on first session
@@ -133,9 +133,6 @@ async function startNewSession(tabId) {
     // Start periodic saving for long sessions
     startPeriodicSave();
 
-    // Start break reminder timer (30 min on same tab)
-    scheduleBreakReminder();
-
     // Check if it's late night and show sleep reminder (DEMO: shows immediately for testing)
     try {
       await checkAndShowSleepReminder();
@@ -203,9 +200,6 @@ async function endCurrentSession() {
     clearInterval(periodicSaveInterval);
     periodicSaveInterval = null;
   }
-
-  // Clear break reminder
-  clearBreakReminder();
 
   const now = Date.now();
   const sessionTitle = currentSession.title || currentSession.url;
@@ -319,47 +313,39 @@ self.addEventListener('beforeunload', async () => {
 
 // ========== WELLNESS NOTIFICATIONS ==========
 
-// Schedule a break reminder after 30 minutes on same tab
-function scheduleBreakReminder() {
+// Schedule global break reminder (starts when extension loads)
+function scheduleGlobalBreakReminder() {
   // Clear any existing timeout
-  if (breakReminderTimeout) {
-    clearTimeout(breakReminderTimeout);
+  if (globalBreakReminderTimeout) {
+    clearTimeout(globalBreakReminderTimeout);
   }
 
-  // Set new timeout for 30 minutes
-  breakReminderTimeout = setTimeout(() => {
+  // Set new timeout
+  globalBreakReminderTimeout = setTimeout(() => {
     showBreakReminder();
   }, BREAK_REMINDER_INTERVAL);
 
-  console.log('⏰ Break reminder scheduled for 30 minutes');
+  console.log('⏰ Global break reminder scheduled for', BREAK_REMINDER_INTERVAL / 60000, 'minute(s)');
 }
 
 // Show break reminder notification
 async function showBreakReminder() {
-  const now = Date.now();
-
-  // Don't show if we showed one in the last 15 minutes
-  if (lastBreakNotification && (now - lastBreakNotification < 15 * 60 * 1000)) {
-    console.log('Skipping break reminder - too soon since last one');
-    return;
-  }
-
   const messages = [
     {
       title: "Time for a Break! 🌟",
-      message: "You've been on this tab for 30 minutes. How about stretching, hydrating, or taking a quick walk?"
+      message: "You've been browsing for a while. How about stretching, hydrating, or taking a quick walk?"
     },
     {
       title: "Break Reminder 💆",
-      message: "30 minutes of focus! Consider giving your eyes a rest with the 20-20-20 rule: Look 20 feet away for 20 seconds."
+      message: "Take a moment to rest! Consider giving your eyes a rest with the 20-20-20 rule: Look 20 feet away for 20 seconds."
     },
     {
       title: "Wellness Check ✨",
-      message: "Time flies! You've been here for 30 minutes. A short break can boost your productivity."
+      message: "Time flies when you're focused! A short break can boost your productivity and well-being."
     },
     {
       title: "Stretch Time! 🧘",
-      message: "30 minutes passed! Stand up, stretch, and give your mind a quick refresh."
+      message: "Stand up, stretch, and give your mind a quick refresh. Your body will thank you!"
     }
   ];
 
@@ -375,13 +361,12 @@ async function showBreakReminder() {
       priority: 1
     });
 
-    lastBreakNotification = now;
     console.log('📢 Showed break reminder notification with ID:', notificationId);
     console.log('   Title:', randomMessage.title);
     console.log('   Message:', randomMessage.message);
 
-    // Schedule next reminder if still on same tab
-    scheduleBreakReminder();
+    // Schedule next break reminder (recurring every hour)
+    scheduleGlobalBreakReminder();
   } catch (error) {
     console.error('❌ Error showing break notification:', error);
     console.error('   Error details:', error.message);
@@ -468,12 +453,7 @@ async function showSleepReminder() {
   }
 }
 
-// Clear break reminder when session ends
-function clearBreakReminder() {
-  if (breakReminderTimeout) {
-    clearTimeout(breakReminderTimeout);
-    breakReminderTimeout = null;
-  }
-}
+// Initialize wellness notifications when extension loads
+scheduleGlobalBreakReminder();
 
 console.log('Reflectra background service worker initialized');
