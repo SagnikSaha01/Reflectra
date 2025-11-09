@@ -4,24 +4,68 @@
   <meta charset="UTF-8">
   <title>Reflectra</title>
   <style>
+    :root {
+      --bg-color: #f5f5f5;
+      --text-color: #1a1a1a;
+      --muted-text: #666666;
+      --card-bg: #ffffff;
+      --card-muted-bg: #f9f9f9;
+      --border-color: #e0e0e0;
+      --accent-color: #10bbc5;
+      --accent-secondary: #667eea;
+      --button-hover: #0ca4ad;
+      --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    [data-theme='dark'] {
+      --bg-color: #0f172a;
+      --text-color: #e2e8f0;
+      --muted-text: #94a3b8;
+      --card-bg: #1e293b;
+      --card-muted-bg: #1a2237;
+      --border-color: #334155;
+      --accent-color: #67e8f9;
+      --accent-secondary: #60a5fa;
+      --button-hover: #38bdf8;
+      --gradient: linear-gradient(135deg, #38bdf8 0%, #6366f1 100%);
+    }
+
     body {
-      width: 320px;
+      width: 340px;
       padding: 16px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       margin: 0;
+      background: var(--bg-color);
+      color: var(--text-color);
+      transition: background 0.3s ease, color 0.3s ease;
     }
 
     h1 {
       font-size: 20px;
-      margin: 0 0 16px 0;
-      color: #1a1a1a;
+      margin: 0;
+      color: var(--text-color);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .popup-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
     }
 
     .stats {
-      background: #f5f5f5;
+      background: var(--card-muted-bg);
       padding: 12px;
       border-radius: 8px;
       margin-bottom: 16px;
+    }
+
+    .stats-highlight {
+      background: rgba(102, 126, 234, 0.12);
+      border-left: 4px solid var(--accent-secondary);
     }
 
     .stat-item {
@@ -31,20 +75,20 @@
     }
 
     .stat-label {
-      color: #666;
+      color: var(--muted-text);
       font-size: 14px;
     }
 
     .stat-value {
       font-weight: 600;
-      color: #1a1a1a;
+      color: var(--text-color);
     }
 
     .category {
       padding: 8px;
       margin-bottom: 8px;
-      border-left: 4px solid #4CAF50;
-      background: #f9f9f9;
+      border-left: 4px solid var(--accent-color);
+      background: var(--card-muted-bg);
       border-radius: 4px;
     }
 
@@ -55,29 +99,30 @@
 
     .category-time {
       font-size: 12px;
-      color: #666;
+      color: var(--muted-text);
     }
 
-    button {
+    .primary-button {
       width: 100%;
       padding: 12px;
-      background: #10bbc5;
+      background: var(--accent-color);
       color: white;
       border: none;
       border-radius: 6px;
       cursor: pointer;
       font-size: 14px;
       font-weight: 500;
+      transition: background 0.2s ease;
     }
 
-    button:hover {
-      background: #45a049;
+    .primary-button:hover {
+      background: var(--button-hover);
     }
 
     .wellness-score {
       text-align: center;
       padding: 16px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: var(--gradient);
       color: white;
       border-radius: 8px;
       margin-bottom: 16px;
@@ -92,23 +137,107 @@
       font-size: 12px;
       opacity: 0.9;
     }
+
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--border-color);
+      background: var(--card-bg);
+      color: var(--text-color);
+      border-radius: 999px;
+      padding: 6px 10px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: background 0.3s ease, border-color 0.3s ease;
+      width: auto;
+    }
+
+    .theme-toggle:hover {
+      border-color: var(--accent-color);
+    }
+
+    .theme-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+
+    .sun-icon {
+      opacity: 1;
+      color: #fbbf24;
+    }
+
+    .moon-icon {
+      position: absolute;
+      right: 10px;
+      opacity: 0;
+      color: #e0f2fe;
+      transform: rotate(-90deg) scale(0.5);
+    }
+
+    .theme-toggle.dark .sun-icon {
+      opacity: 0;
+      transform: rotate(90deg) scale(0.6);
+    }
+
+    .theme-toggle.dark .moon-icon {
+      opacity: 1;
+      transform: rotate(0deg) scale(1);
+    }
+
+    .current-session {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 16px;
+    }
+
+    .current-session-title {
+      font-size: 14px;
+      color: var(--muted-text);
+    }
+
+    .current-session-value {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-color);
+    }
+
+    .current-tab-title {
+      font-size: 12px;
+      color: var(--muted-text);
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display: block;
+    }
   </style>
 </head>
 <body>
-  <h1><img src="./icons/icon128.png" width="20px" style="position: relative; top: 3px"/> Reflectra</h1>
+  <div class="popup-header">
+    <h1><img src="./icons/icon128.png" width="20px" style="position: relative; top: 3px"/> Reflectra</h1>
+    <button id="themeToggle" class="theme-toggle">
+      <span class="theme-icon sun-icon">☀️</span>
+      <span class="theme-icon moon-icon">🌙</span>
+    </button>
+  </div>
 
   <div class="wellness-score">
     <div class="score-label">Digital Wellness Score</div>
     <div class="score-value" id="wellnessScore">--</div>
   </div>
 
-  <div class="stats" style="background: #e3f2fd; border-left: 4px solid #2196F3;">
+  <div class="stats stats-highlight">
     <div class="stat-item">
       <span class="stat-label">Current Tab</span>
       <span class="stat-value" id="currentTabTime">0:00</span>
     </div>
     <div class="stat-item" style="margin-bottom: 0;">
-      <span class="stat-label" id="currentTabTitle" style="font-size: 12px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">No active session</span>
+      <span class="current-tab-title" id="currentTabTitle">No active session</span>
     </div>
   </div>
 
@@ -126,7 +255,7 @@
   <h2 style="font-size: 16px; margin-bottom: 12px;">Today's Categories</h2>
   <div id="categories"></div>
 
-  <button id="openDashboard">Open Full Dashboard</button>
+  <button id="openDashboard" class="primary-button">Open Full Dashboard</button>
 
   <script src="popup.js"></script>
 </body>

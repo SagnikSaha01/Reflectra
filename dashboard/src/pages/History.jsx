@@ -8,7 +8,7 @@ function History() {
   const [sessions, setSessions] = useState([])
   const [categories, setCategories] = useState([])
   const [selectedCategory, setSelectedCategory] = useState('all')
-  const [sortField, setSortField] = useState('duration')
+  const [sortField, setSortField] = useState('recency')
   const [sortOrder, setSortOrder] = useState('desc')
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)

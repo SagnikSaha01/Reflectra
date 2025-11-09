@@ -1,6 +1,7 @@
 // MindTime Popup Script
 
 const API_ENDPOINT = 'http://localhost:3000/api';
+const THEME_STORAGE_KEY = 'reflectra-popup-theme';
 
 // Live timer for current tab
 let timerInterval = null;
@@ -65,6 +66,37 @@ function mergeDuplicateSessions(sessionsList, mergeWindow = 300000) {
   }
 
   return merged;
+}
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  const toggleBtn = document.getElementById('themeToggle');
+  if (toggleBtn) {
+    if (theme === 'dark') {
+      toggleBtn.classList.add('dark');
+    } else {
+      toggleBtn.classList.remove('dark');
+    }
+  }
+}
+
+function initThemeToggle() {
+  let storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+  if (!storedTheme) {
+    storedTheme = 'dark';
+    localStorage.setItem(THEME_STORAGE_KEY, storedTheme);
+  }
+  applyTheme(storedTheme);
+
+  const toggleBtn = document.getElementById('themeToggle');
+  if (!toggleBtn) return;
+
+  toggleBtn.addEventListener('click', () => {
+    const currentTheme = document.documentElement.dataset.theme || 'light';
+    const nextTheme = currentTheme === 'light' ? 'dark' : 'light';
+    localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    applyTheme(nextTheme);
+  });
 }
 
 async function updateCurrentTabTime() {
@@ -174,6 +206,7 @@ document.getElementById('openDashboard').addEventListener('click', () => {
   chrome.tabs.create({ url: 'http://localhost:3001' });
 });
 
-// Load stats and start live timer on popup open
+// Initialize theme, load stats and start live timer on popup open
+initThemeToggle();
 loadTodayStats();
 startLiveTimer();

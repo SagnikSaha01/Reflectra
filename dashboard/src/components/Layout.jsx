@@ -8,9 +8,9 @@ function Layout({ children }) {
   const location = useLocation()
   const [theme, setTheme] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('reflectra-theme') || 'light'
+      return localStorage.getItem('reflectra-theme') || 'dark'
     }
-    return 'light'
+    return 'dark'
   })
 
   useEffect(() => {
